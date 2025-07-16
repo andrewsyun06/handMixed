@@ -21,6 +21,9 @@ function selectDeck(deckLetter) {
 }
 
 // Load track to selected deck with professional multi-channel processing
+// COMMENTED OUT - This conflicts with the main loadTrackToDeck in multi-channel-audio.js
+// This version has a different signature (trackIndex vs track, deckLetter) and calls undefined updateStatus
+/*
 async function loadTrackToDeck(trackIndex) {
     if (!appState.selectedDeck) {
         updateStatus('Please select a deck first (click on a deck display)', 'error');
@@ -147,6 +150,7 @@ async function loadTrackToDeck(trackIndex) {
         updateDeckDisplayEnhanced(deckLetter, null);
     }
 }
+*/
 
 // Process professional multi-channel audio separation
 async function processProfessionalMultiChannelAudio(deckLetter) {

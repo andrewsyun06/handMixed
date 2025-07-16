@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Test</title>
+</head>
+<body>
+    <h1>Camera Test</h1>
+    <button onclick="testCamera()">Test Camera Access</button>
+    <video id="testVideo" width="320" height="240" autoplay></video>
+    
+    <script>
+        async function testCamera() {
+            try {
+                console.log('Requesting camera access...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                console.log('Camera access granted!');
+                document.getElementById('testVideo').srcObject = stream;
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Camera error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

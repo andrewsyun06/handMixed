@@ -147,6 +147,35 @@
     box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
 }
 
+/* Channel Icons */
+.channel-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ff6b6b;
+    text-align: center;
+    line-height: 20px;
+    font-size: 14px;
+    color: #000;
+    margin-left: 10px;
+    transition: all 0.3s ease;
+}
+
+.channel-btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.channel-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.2);
+}
+
+.channel-btn.active .channel-icon {
+    box-shadow: 0 0 10px currentColor;
+}
+
 /* Professional Channel Indicators */
 .audio-channels {
     display: flex;
@@ -315,6 +344,17 @@
     color: rgba(255, 255, 255, 0.4);
     font-size: 0.8rem;
     font-family: 'Orbitron', monospace;
+}
+
+/* Channel Waveform Canvas */
+.channel-waveform-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
 }
 
 /* Professional Hand Indicators */

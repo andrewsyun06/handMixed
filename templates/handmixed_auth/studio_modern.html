@@ -1,0 +1,398 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandMixed Pro - Modern DJ Studio</title>
+    
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7.7.3/dist/wavesurfer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <!-- Modern CSS Files -->
+    <link rel="stylesheet" href="{% static 'css/modern-theme.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-deck.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-navigation.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modern-music-hub.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Modern Navigation -->
+    <nav class="modern-nav">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <div class="nav-logo-icon">🎛️</div>
+                <span>HandMixed Pro</span>
+            </a>
+            
+            <div class="nav-menu">
+                <div class="nav-search">
+                    <span class="nav-search-icon">🔍</span>
+                    <input type="text" class="nav-search-input" placeholder="Search tracks, artists..." id="globalSearchInput">
+                </div>
+                
+                <div class="nav-item">
+                    <a href="#" class="nav-link active">Studio</a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link" onclick="togglePlaylistSidebar()">Playlists</a>
+                </div>
+                <div class="nav-item">
+                    <a href="#" class="nav-link">Settings</a>
+                </div>
+            </div>
+            
+            <div class="nav-user">
+                <div class="nav-user-avatar">DJ</div>
+                <a href="/logout/" class="modern-btn">Logout</a>
+            </div>
+            
+            <button class="nav-mobile-toggle" onclick="toggleMobileMenu()">☰</button>
+        </div>
+    </nav>
+
+    <!-- Main Studio Container -->
+    <div class="studio-container">
+        <!-- Hand Tracking Section -->
+        <div class="hand-tracking-section">
+            <div class="video-container-modern" id="videoContainer">
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="canvas"></canvas>
+                <div class="video-placeholder-modern" id="videoPlaceholder">
+                    <div class="placeholder-icon">🖐️</div>
+                    <div class="placeholder-text">Hand Control Ready</div>
+                    <div class="placeholder-subtext">Use gestures to control your mix</div>
+                </div>
+            </div>
+            
+            <div class="hand-controls-modern">
+                <button class="modern-btn primary" id="startBtn" onclick="startHandTracking()">
+                    Start Hand Tracking
+                </button>
+                <button class="modern-btn secondary" id="stopBtn" onclick="stopHandTracking()" style="display: none;">
+                    Stop Hand Tracking
+                </button>
+            </div>
+            
+            <div class="gesture-guide-modern">
+                <div class="gesture-item">
+                    <span class="gesture-icon">☝️</span>
+                    <span class="gesture-text">1 Finger = Main</span>
+                </div>
+                <div class="gesture-item">
+                    <span class="gesture-icon">✌️</span>
+                    <span class="gesture-text">2 Fingers = Bass</span>
+                </div>
+                <div class="gesture-item">
+                    <span class="gesture-icon">🤟</span>
+                    <span class="gesture-text">3 Fingers = Drums</span>
+                </div>
+                <div class="gesture-item">
+                    <span class="gesture-icon">🖐️</span>
+                    <span class="gesture-text">Open Hand = All</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decks Section -->
+        <div class="decks-section">
+            <!-- Deck A -->
+            <div class="deck-container deck-a" id="deckAContainer">
+                <div class="deck-header-modern">
+                    <div class="deck-title-modern">DECK A</div>
+                    <div class="deck-bpm-display" id="deckABPM">-- BPM</div>
+                </div>
+                
+                <div class="track-display-modern" id="deckATrackDisplay" onclick="selectDeck('A')">
+                    <div class="track-artwork-modern" id="deckAArtwork">🎵</div>
+                    <div class="track-info-modern">
+                        <div class="track-name-modern" id="deckATrackName">No track loaded</div>
+                        <div class="track-artist-modern" id="deckATrackArtist">Select track from Audius</div>
+                        <div class="track-status-modern" id="deckATrackStatus">Ready</div>
+                    </div>
+                </div>
+                
+                <div class="channel-controls-modern">
+                    <div class="channel-btn-modern bass active" onclick="toggleChannelMode('A', 'bass')">
+                        <div class="channel-indicator-modern">🔊</div>
+                        <span class="channel-label-modern">BASS</span>
+                    </div>
+                    <div class="channel-btn-modern drums active" onclick="toggleChannelMode('A', 'drums')">
+                        <div class="channel-indicator-modern">🥁</div>
+                        <span class="channel-label-modern">DRUMS</span>
+                    </div>
+                    <div class="channel-btn-modern synth active" onclick="toggleChannelMode('A', 'synth')">
+                        <div class="channel-indicator-modern">🎹</div>
+                        <span class="channel-label-modern">SYNTH</span>
+                    </div>
+                </div>
+                
+                <div class="volume-control-modern">
+                    <div class="volume-slider-modern">
+                        <div class="volume-fill-modern" id="deckAVolumeFill" style="width: 0%;">
+                            <div class="volume-handle-modern"></div>
+                        </div>
+                    </div>
+                    <div class="volume-text-modern" id="deckAVolumeText">Volume 0%</div>
+                </div>
+                
+                <div class="waveforms-modern">
+                    <div class="waveform-item-modern bass">
+                        <div class="waveform-label-modern">BASS/KICK</div>
+                        <div class="waveform-container-modern" id="deckAWaveformBass">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                    <div class="waveform-item-modern drums">
+                        <div class="waveform-label-modern">DRUMS</div>
+                        <div class="waveform-container-modern" id="deckAWaveformDrums">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                    <div class="waveform-item-modern synth">
+                        <div class="waveform-label-modern">SYNTH</div>
+                        <div class="waveform-container-modern" id="deckAWaveformSynth">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deck-processing-overlay" id="deckAProcessing">
+                    <div class="processing-spinner-modern"></div>
+                    <div class="processing-text-modern">Processing audio channels...</div>
+                </div>
+            </div>
+
+            <!-- Global Controls -->
+            <div class="global-controls-modern">
+                <button class="modern-btn primary" id="globalPlayBtn" onclick="playBothDecks()">
+                    ▶ Play Both
+                </button>
+                <button class="modern-btn secondary" id="globalPauseBtn" onclick="pauseBothDecks()" style="display: none;">
+                    ⏸ Pause Both
+                </button>
+                
+                <div class="crossfader-modern">
+                    <div class="crossfader-track">
+                        <div class="crossfader-handle" id="crossfaderHandle"></div>
+                    </div>
+                    <div class="crossfader-labels">
+                        <span>A</span>
+                        <span>B</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deck B -->
+            <div class="deck-container deck-b" id="deckBContainer">
+                <div class="deck-header-modern">
+                    <div class="deck-title-modern">DECK B</div>
+                    <div class="deck-bpm-display" id="deckBBPM">-- BPM</div>
+                </div>
+                
+                <div class="track-display-modern" id="deckBTrackDisplay" onclick="selectDeck('B')">
+                    <div class="track-artwork-modern" id="deckBArtwork">🎵</div>
+                    <div class="track-info-modern">
+                        <div class="track-name-modern" id="deckBTrackName">No track loaded</div>
+                        <div class="track-artist-modern" id="deckBTrackArtist">Select track from Audius</div>
+                        <div class="track-status-modern" id="deckBTrackStatus">Ready</div>
+                    </div>
+                </div>
+                
+                <div class="channel-controls-modern">
+                    <div class="channel-btn-modern bass active" onclick="toggleChannelMode('B', 'bass')">
+                        <div class="channel-indicator-modern">🔊</div>
+                        <span class="channel-label-modern">BASS</span>
+                    </div>
+                    <div class="channel-btn-modern drums active" onclick="toggleChannelMode('B', 'drums')">
+                        <div class="channel-indicator-modern">🥁</div>
+                        <span class="channel-label-modern">DRUMS</span>
+                    </div>
+                    <div class="channel-btn-modern synth active" onclick="toggleChannelMode('B', 'synth')">
+                        <div class="channel-indicator-modern">🎹</div>
+                        <span class="channel-label-modern">SYNTH</span>
+                    </div>
+                </div>
+                
+                <div class="volume-control-modern">
+                    <div class="volume-slider-modern">
+                        <div class="volume-fill-modern" id="deckBVolumeFill" style="width: 0%;">
+                            <div class="volume-handle-modern"></div>
+                        </div>
+                    </div>
+                    <div class="volume-text-modern" id="deckBVolumeText">Volume 0%</div>
+                </div>
+                
+                <div class="waveforms-modern">
+                    <div class="waveform-item-modern bass">
+                        <div class="waveform-label-modern">BASS/KICK</div>
+                        <div class="waveform-container-modern" id="deckBWaveformBass">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                    <div class="waveform-item-modern drums">
+                        <div class="waveform-label-modern">DRUMS</div>
+                        <div class="waveform-container-modern" id="deckBWaveformDrums">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                    <div class="waveform-item-modern synth">
+                        <div class="waveform-label-modern">SYNTH</div>
+                        <div class="waveform-container-modern" id="deckBWaveformSynth">
+                            <div class="waveform-loading-modern">Loading waveform...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deck-processing-overlay" id="deckBProcessing">
+                    <div class="processing-spinner-modern"></div>
+                    <div class="processing-text-modern">Processing audio channels...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Music Hub Section -->
+        <div class="music-hub-modern">
+            <div class="music-nav">
+                <div class="music-nav-tabs">
+                    <button class="music-nav-tab active" onclick="loadTrendingTracks()">Trending</button>
+                    <button class="music-nav-tab" onclick="showSearchInterface()">Search</button>
+                    <button class="music-nav-tab" onclick="showRecentTracks()">Recent</button>
+                    <button class="music-nav-tab" onclick="showFavorites()">Favorites</button>
+                </div>
+                
+                <div class="music-filter-bar">
+                    <div class="filter-dropdown">
+                        <button class="filter-button">Genre</button>
+                        <div class="filter-dropdown-menu">
+                            <div class="filter-option">All Genres</div>
+                            <div class="filter-option">Electronic</div>
+                            <div class="filter-option">Hip Hop</div>
+                            <div class="filter-option">House</div>
+                            <div class="filter-option">Techno</div>
+                            <div class="filter-option">Drum & Bass</div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-dropdown">
+                        <button class="filter-button">BPM Range</button>
+                        <div class="filter-dropdown-menu">
+                            <div class="filter-option">All BPM</div>
+                            <div class="filter-option">60-90 BPM</div>
+                            <div class="filter-option">90-120 BPM</div>
+                            <div class="filter-option">120-140 BPM</div>
+                            <div class="filter-option">140-180 BPM</div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-dropdown">
+                        <button class="filter-button">Duration</button>
+                        <div class="filter-dropdown-menu">
+                            <div class="filter-option">All Durations</div>
+                            <div class="filter-option">0-3 min</div>
+                            <div class="filter-option">3-5 min</div>
+                            <div class="filter-option">5-10 min</div>
+                            <div class="filter-option">10+ min</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="musicContent">
+                <div class="music-loading-modern">
+                    <div class="music-loading-spinner"></div>
+                    <div>Loading tracks...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Playlist Sidebar -->
+    <div class="playlist-sidebar-modern" id="playlistSidebar">
+        <div class="playlist-header-modern">
+            <h2 class="playlist-title-modern">My Playlist</h2>
+            <button class="playlist-close-btn" onclick="togglePlaylistSidebar()">×</button>
+        </div>
+        
+        <div class="playlist-content-modern" id="playlistContent">
+            <div class="music-empty-modern">
+                <div class="music-empty-icon">📋</div>
+                <div class="music-empty-text">Your playlist is empty</div>
+                <div class="music-empty-subtext">Add tracks to start mixing</div>
+            </div>
+        </div>
+        
+        <div class="playlist-actions-modern">
+            <button class="playlist-action-btn save" onclick="savePlaylist()">Save Playlist</button>
+            <button class="playlist-action-btn clear" onclick="clearPlaylist()">Clear All</button>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar-modern" id="statusBar">
+        <div class="status-message" id="statusMessage">Ready to mix</div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="{% static 'js/core/app-state.js' %}"></script>
+    <script src="{% static 'js/core/initialization.js' %}"></script>
+    <script src="{% static 'js/audio/tone-setup.js' %}"></script>
+    <script src="{% static 'js/audio/wavesurfer-setup.js' %}"></script>
+    <script src="{% static 'js/audio/source-seperation.js' %}"></script>
+    <script src="{% static 'js/audio/deck-manager.js' %}"></script>
+    <script src="{% static 'js/controls/hand-tracking.js' %}"></script>
+    <script src="{% static 'js/controls/crossfader.js' %}"></script>
+    <script src="{% static 'js/gestures/hand-gestures.js' %}"></script>
+    <script src="{% static 'js/gestures/gesture-detector.js' %}"></script>
+    <script src="{% static 'js/utils/ui-helpers.js' %}"></script>
+    <script src="{% static 'js/utils/deck-ui.js' %}"></script>
+    <script src="{% static 'js/utils/track-ui.js' %}"></script>
+    <script src="{% static 'js/utils/search-manager.js' %}"></script>
+    <script src="{% static 'js/utils/playlist-manager.js' %}"></script>
+    <script src="{% static 'js/utils/playlist-storage.js' %}"></script>
+    <script src="{% static 'js/utils/playlist-ui.js' %}"></script>
+    <script src="{% static 'js/utils/status-manager.js' %}"></script>
+    <script src="{% static 'js/utils/bpm-detector.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    
+    <!-- Additional Modern Scripts -->
+    <script>
+        // Toggle mobile menu
+        function toggleMobileMenu() {
+            document.querySelector('.nav-menu').classList.toggle('active');
+        }
+        
+        // Toggle playlist sidebar
+        function togglePlaylistSidebar() {
+            document.getElementById('playlistSidebar').classList.toggle('active');
+        }
+        
+        // Toggle channel mode
+        function toggleChannelMode(deck, channel) {
+            const btn = event.currentTarget;
+            btn.classList.toggle('active');
+            
+            // Update channel state
+            if (deckState[deck] && deckState[deck].audioChannels) {
+                deckState[deck].audioChannels[channel].enabled = btn.classList.contains('active');
+                updateAudioChannelSettings(deck);
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            console.log('🎛️ Modern HandMixed Pro Studio Loaded');
+            loadTrendingTracks();
+        });
+    </script>
+</body>
+</html>

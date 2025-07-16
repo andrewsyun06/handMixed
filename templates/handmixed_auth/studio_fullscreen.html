@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandMixed Pro - Professional DJ Studio</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/static/css/fullscreen-cam-layout.css">
+    
+    <!-- Required Libraries -->
+    <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
+    <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://unpkg.com/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/wavesurfer.min.js"></script>
+</head>
+<body>
+    <div class="studio-fullscreen">
+        <!-- Camera Full Background -->
+        <div class="camera-fullscreen">
+            <video id="video" autoplay muted playsinline hidden></video>
+            <canvas id="canvas"></canvas>
+            
+            <div class="camera-placeholder" id="cameraPlaceholder">
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">CAMERA</div>
+                    <button class="start-camera-btn" id="startHandDJBtn">START HAND DJ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header Bar -->
+        <header class="header-bar">
+            <h1 class="logo-title">HANDMIXED PRO</h1>
+            <div class="header-controls">
+                <button class="header-btn logout" onclick="window.location.href='/logout/'">LOGOUT</button>
+            </div>
+        </header>
+
+        <!-- Left Deck Panel -->
+        <div class="deck-overlay-panel left">
+            <div class="deck-header">
+                <div class="deck-label">
+                    <span>DECK A</span>
+                </div>
+                <div class="bpm-display">-- BPM</div>
+            </div>
+
+            <div class="track-display" id="trackDisplayA">
+                <div class="no-track" onclick="window.selectTrackForDeck('A')" style="cursor: pointer;">
+                    <div class="track-art">♪</div>
+                    <div>Click to load track</div>
+                </div>
+            </div>
+
+            <!-- Channel Controls -->
+            <div class="channel-controls">
+                <div class="channel-btn active" data-channel="bass">
+                    <div class="channel-icon">B</div>
+                    <span class="channel-label">BASS</span>
+                </div>
+                <div class="channel-btn active" data-channel="drums">
+                    <div class="channel-icon">D</div>
+                    <span class="channel-label">DRUMS</span>
+                </div>
+                <div class="channel-btn active" data-channel="synth">
+                    <div class="channel-icon">S</div>
+                    <span class="channel-label">SYNTH</span>
+                </div>
+            </div>
+
+            <!-- Main Waveform -->
+            <div class="main-waveform-section">
+                <div class="main-waveform-container" id="mainWaveformA">
+                    <canvas class="main-waveform-canvas" id="mainWaveformCanvasA"></canvas>
+                    <div class="waveform-progress" id="waveformProgressA"></div>
+                    <input type="range" class="waveform-seek-slider" id="seekSliderA" min="0" max="100" value="0" 
+                           oninput="if(window.simpleDeckData && window.simpleDeckData.A.audio) { window.simpleDeckData.A.audio.currentTime = (this.value/100) * window.simpleDeckData.A.audio.duration; }">
+                </div>
+                <div class="track-time-info">
+                    <span id="currentTimeA">0:00</span> / <span id="durationA">0:00</span>
+                </div>
+            </div>
+
+            <!-- Deck Controls -->
+            <div class="deck-controls">
+                <button class="play-deck-btn" onclick="toggleDeckPlayback('A')">
+                    PLAY DECK A
+                </button>
+            </div>
+
+            <!-- Volume -->
+            <div class="volume-section">
+                <div class="volume-label">Volume <span id="volumeLabelA">70</span>%</div>
+                <input type="range" class="volume-slider" id="volumeSliderA" min="0" max="100" value="70" 
+                       oninput="updateDeckVolume('A', this.value)">
+            </div>
+
+            <!-- Waveforms -->
+            <div class="waveform-section">
+                <div class="waveform-label">BASS/KICK</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformBassA"></canvas>
+                </div>
+            </div>
+            <div class="waveform-section">
+                <div class="waveform-label">DRUMS</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformDrumsA"></canvas>
+                </div>
+            </div>
+            <div class="waveform-section">
+                <div class="waveform-label">SYNTH</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformSynthA"></canvas>
+                </div>
+            </div>
+
+            <!-- Hand Indicator -->
+            <div class="hand-indicator">
+                <span class="hand-dot" id="leftHandDot"></span>
+            </div>
+        </div>
+
+        <!-- Right Deck Panel -->
+        <div class="deck-overlay-panel right">
+            <div class="deck-header">
+                <div class="deck-label">
+                    <span>DECK B</span>
+                </div>
+                <div class="bpm-display">-- BPM</div>
+            </div>
+
+            <div class="track-display" id="trackDisplayB">
+                <div class="no-track" onclick="window.selectTrackForDeck('B')" style="cursor: pointer;">
+                    <div class="track-art">♪</div>
+                    <div>Click to load track</div>
+                </div>
+            </div>
+
+            <!-- Channel Controls -->
+            <div class="channel-controls">
+                <div class="channel-btn active" data-channel="bass">
+                    <div class="channel-icon">B</div>
+                    <span class="channel-label">BASS</span>
+                </div>
+                <div class="channel-btn active" data-channel="drums">
+                    <div class="channel-icon">D</div>
+                    <span class="channel-label">DRUMS</span>
+                </div>
+                <div class="channel-btn active" data-channel="synth">
+                    <div class="channel-icon">S</div>
+                    <span class="channel-label">SYNTH</span>
+                </div>
+            </div>
+
+            <!-- Main Waveform -->
+            <div class="main-waveform-section">
+                <div class="main-waveform-container" id="mainWaveformB">
+                    <canvas class="main-waveform-canvas" id="mainWaveformCanvasB"></canvas>
+                    <div class="waveform-progress" id="waveformProgressB"></div>
+                    <input type="range" class="waveform-seek-slider" id="seekSliderB" min="0" max="100" value="0" 
+                           oninput="if(window.simpleDeckData && window.simpleDeckData.B.audio) { window.simpleDeckData.B.audio.currentTime = (this.value/100) * window.simpleDeckData.B.audio.duration; }">
+                </div>
+                <div class="track-time-info">
+                    <span id="currentTimeB">0:00</span> / <span id="durationB">0:00</span>
+                </div>
+            </div>
+
+            <!-- Deck Controls -->
+            <div class="deck-controls">
+                <button class="play-deck-btn" onclick="toggleDeckPlayback('B')">
+                    PLAY DECK B
+                </button>
+            </div>
+
+            <!-- Volume -->
+            <div class="volume-section">
+                <div class="volume-label">Volume <span id="volumeLabelB">70</span>%</div>
+                <input type="range" class="volume-slider" id="volumeSliderB" min="0" max="100" value="70" 
+                       oninput="updateDeckVolume('B', this.value)">
+            </div>
+
+            <!-- Waveforms -->
+            <div class="waveform-section">
+                <div class="waveform-label">BASS/KICK</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformBassB"></canvas>
+                </div>
+            </div>
+            <div class="waveform-section">
+                <div class="waveform-label">DRUMS</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformDrumsB"></canvas>
+                </div>
+            </div>
+            <div class="waveform-section">
+                <div class="waveform-label">SYNTH</div>
+                <div class="waveform-display">
+                    <canvas class="waveform-canvas" id="waveformSynthB"></canvas>
+                </div>
+            </div>
+
+            <!-- Hand Indicator -->
+            <div class="hand-indicator">
+                <span class="hand-dot" id="rightHandDot"></span>
+            </div>
+        </div>
+
+
+        <!-- Center Controls -->
+        <button class="stop-hand-dj" id="stopHandDJ" style="display: none;" onclick="stopHandDJ()">
+            STOP HAND DJ
+        </button>
+
+        <div class="crossfader-container" id="crossfaderContainer" style="display: none;">
+            <div class="crossfader-label">CROSSFADER</div>
+            <div class="crossfader-track">
+                <div class="crossfader-handle" id="crossfaderHandle"></div>
+            </div>
+            <div class="crossfader-labels">
+                <span class="a">A</span>
+                <span class="b">B</span>
+            </div>
+        </div>
+
+        <button class="play-both-btn" id="playBothBtn" style="display: none;" onclick="window.playBothDecks()">
+            PLAY BOTH DECKS
+        </button>
+        
+        <button class="play-both-btn" id="testAudioBtn" style="display: none; bottom: 40px; background: #ff0080;" onclick="testSimpleAudio()">
+            TEST AUDIO
+        </button>
+
+        <!-- Bottom Bar -->
+        <footer class="bottom-bar">
+            <div class="library-label">AUDIUS MUSIC LIBRARY</div>
+            <button class="show-btn" onclick="showMusicLibrary()">SHOW</button>
+        </footer>
+
+    </div>
+
+    <!-- Track Browser Modal -->
+    <div class="modal" id="trackBrowserModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Track for <span id="modalDeckLabel">Deck A</span></h3>
+                <button class="modal-close" onclick="hideTrackBrowser()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="track-search">
+                    <input type="text" id="trackSearchInput" placeholder="Search tracks...">
+                    <button class="search-btn" onclick="searchTracks()">Search</button>
+                </div>
+                <div class="track-list" id="trackList">
+                    <!-- Tracks will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="/static/js/core/app-state.js"></script>
+    <script src="/static/js/audio/multi-channel-audio.js"></script>
+    <script src="/static/js/audio/deck-manager.js"></script>
+    <script src="/static/js/deck/deck-functions.js"></script>
+    <script src="/static/js/visuals/hand-mask-renderer.js"></script>
+    <script src="/static/js/visuals/waveform-visualizer.js"></script>
+    <script src="/static/js/visuals/main-waveform.js"></script>
+    <script src="/static/js/controls/hand-tracking.js"></script>
+    <script src="/static/js/gestures/hand-gestures.js"></script>
+    <script src="/static/js/gestures/palm-detector.js"></script>
+    <script src="/static/js/ui/fullscreen-studio.js"></script>
+    <script src="/static/js/ui/gesture-feedback.js"></script>
+    <script src="/static/js/deck/simple-deck-loader.js"></script>
+    <script src="/static/js/deck/advanced-audio-splitter.js"></script>
+    <script src="/static/js/deck/audio-waveform-renderer.js"></script>
+    
+    <script>
+        // Define selectTrackForDeck function directly in HTML to ensure it's available
+        window.selectTrackForDeck = function(deck) {
+            console.log(`🎵 Opening track browser for Deck ${deck} (from inline script)`);
+            
+            // Store current deck selection
+            if (typeof studioState !== 'undefined') {
+                studioState.currentDeckSelection = deck;
+            }
+            
+            // Simple modal display
+            const modal = document.getElementById('trackBrowserModal');
+            if (modal) {
+                modal.style.display = 'block';
+                
+                // Update modal styling based on deck
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    if (deck === 'B') {
+                        modalContent.classList.add('deck-b');
+                    } else {
+                        modalContent.classList.remove('deck-b');
+                    }
+                }
+                
+                // Update deck label
+                const label = document.getElementById('modalDeckLabel');
+                if (label) label.textContent = `Deck ${deck}`;
+                
+                // Load tracks if function exists
+                if (typeof loadTrendingTracks === 'function') {
+                    loadTrendingTracks();
+                } else {
+                    console.log('loadTrendingTracks not yet available, trying fetch directly...');
+                    const trackList = document.getElementById('trackList');
+                    if (trackList) {
+                        trackList.innerHTML = '<div class="loading">Loading tracks...</div>';
+                        
+                        // Try direct fetch
+                        fetch('/api/audius/trending/?limit=30')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.tracks && data.tracks.length > 0) {
+                                    const html = data.tracks.map((track, index) => `
+                                        <div class="track-item" onclick="window.selectTrackDirect(${index}, '${deck}')">
+                                            <div class="track-info">
+                                                <div class="track-title">${track.title || 'Unknown'}</div>
+                                                <div class="track-artist">${track.user?.username || track.artist || 'Unknown Artist'}</div>
+                                            </div>
+                                        </div>
+                                    `).join('');
+                                    trackList.innerHTML = html;
+                                    
+                                    // Store tracks for selection
+                                    window.tempTracks = data.tracks;
+                                } else {
+                                    trackList.innerHTML = '<div class="error">No tracks available</div>';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Failed to load tracks:', error);
+                                trackList.innerHTML = '<div class="error">Failed to load tracks</div>';
+                            });
+                    }
+                }
+            } else {
+                console.error('Modal not found!');
+                alert('Track browser not available. Please refresh the page.');
+            }
+        };
+        
+        // Hide track browser
+        window.hideTrackBrowser = function() {
+            const modal = document.getElementById('trackBrowserModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        // Direct track selection
+        window.selectTrackDirect = function(index, deck) {
+            console.log(`Selecting track ${index} for deck ${deck}`);
+            if (window.tempTracks && window.tempTracks[index]) {
+                const track = window.tempTracks[index];
+                console.log('Selected track:', track);
+                console.log('Track title:', track.title);
+                console.log('Track artwork:', track.artwork);
+                console.log('Track user:', track.user);
+                
+                // Use our new simple loader
+                if (window.loadTrackToSpecificDeck) {
+                    console.log('Using loadTrackToSpecificDeck');
+                    window.loadTrackToSpecificDeck(track, deck);
+                } else {
+                    console.error('loadTrackToSpecificDeck not available yet');
+                    // Store for retry
+                    window.pendingTrackLoad = { track, deck };
+                }
+                
+                // Hide modal
+                window.hideTrackBrowser();
+            }
+        };
+        
+        // Direct UI update function
+        window.updateTrackDisplayDirect = function(deck, track) {
+            console.log(`🎯 updateTrackDisplayDirect called for Deck ${deck}:`, track);
+            
+            const trackDisplay = document.getElementById(`trackDisplay${deck}`);
+            if (!trackDisplay) {
+                console.error(`❌ trackDisplay${deck} not found in DOM`);
+                // Try to find all elements with track-display class for debugging
+                const allTrackDisplays = document.querySelectorAll('.track-display');
+                console.log(`Found ${allTrackDisplays.length} elements with .track-display class:`, allTrackDisplays);
+                return;
+            }
+            
+            console.log(`✅ Found trackDisplay${deck} element:`, trackDisplay);
+            
+            // Get album cover URL
+            let albumCoverUrl = null;
+            if (track.artwork) {
+                if (typeof track.artwork === 'string') {
+                    albumCoverUrl = track.artwork;
+                } else if (typeof track.artwork === 'object') {
+                    albumCoverUrl = track.artwork['1000x1000'] || 
+                                   track.artwork['480x480'] || 
+                                   track.artwork['150x150'];
+                }
+            }
+            
+            if (!albumCoverUrl) {
+                albumCoverUrl = track.cover_art || 
+                               track.user?.profile_picture?.['480x480'] ||
+                               track.user?.avatar_url;
+            }
+            
+            // Update the display
+            const newHTML = `
+                <div class="track-loaded">
+                    <div class="track-art">
+                        ${albumCoverUrl ? 
+                            `<img src="${albumCoverUrl}" alt="Album Cover" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">` :
+                            `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #00d4ff, #ff0080); border-radius: 8px;">♪</div>`
+                        }
+                    </div>
+                    <div class="track-info">
+                        <div class="track-name">${track.title || 'Unknown'}</div>
+                        <div class="track-artist">${track.user?.username || track.artist || 'Unknown Artist'}</div>
+                    </div>
+                </div>
+            `;
+            
+            console.log(`📝 Setting new HTML for trackDisplay${deck}`);
+            trackDisplay.innerHTML = newHTML;
+            trackDisplay.classList.add('has-track');
+            console.log(`✅ Track display updated successfully for Deck ${deck}`);
+            
+            // Verify the update worked
+            const verifyUpdate = trackDisplay.querySelector('.track-loaded');
+            if (verifyUpdate) {
+                console.log(`✅ Verified: .track-loaded element exists in DOM for Deck ${deck}`);
+            } else {
+                console.error(`❌ ERROR: .track-loaded element NOT found after update for Deck ${deck}`);
+            }
+        };
+        
+        // Search tracks function
+        window.searchTracks = function() {
+            const query = document.getElementById('trackSearchInput').value.trim();
+            if (!query) return;
+            
+            const trackList = document.getElementById('trackList');
+            trackList.innerHTML = '<div class="loading">Searching...</div>';
+            
+            fetch(`/api/audius/search/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.tracks && data.tracks.length > 0) {
+                        const deck = (typeof studioState !== 'undefined' && studioState.currentDeckSelection) || 'A';
+                        const html = data.tracks.map((track, index) => `
+                            <div class="track-item" onclick="window.selectTrackDirect(${index}, '${deck}')">
+                                <div class="track-info">
+                                    <div class="track-title">${track.title || 'Unknown'}</div>
+                                    <div class="track-artist">${track.user?.username || track.artist || 'Unknown Artist'}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                        trackList.innerHTML = html;
+                        window.tempTracks = data.tracks;
+                    } else {
+                        trackList.innerHTML = '<div class="empty">No tracks found</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Search failed:', error);
+                    trackList.innerHTML = '<div class="error">Search failed</div>';
+                });
+        };
+        
+        // Listen for track loaded events
+        window.addEventListener('trackLoaded', function(event) {
+            console.log('Track loaded event received:', event.detail);
+            const { deck, track } = event.detail;
+            window.updateTrackDisplayDirect(deck, track);
+        });
+        
+        // Test function to manually update track display
+        window.testTrackDisplay = function(deck) {
+            const testTrack = {
+                title: "Test Track",
+                artist: "Test Artist",
+                user: { username: "Test User" }
+            };
+            console.log(`🧪 Testing track display update for Deck ${deck}`);
+            window.updateTrackDisplayDirect(deck, testTrack);
+        };
+        
+        // Debug function to check track display state
+        window.debugTrackDisplay = function(deck) {
+            console.log(`🔍 Debugging track display for Deck ${deck}`);
+            
+            const trackDisplay = document.getElementById(`trackDisplay${deck}`);
+            if (!trackDisplay) {
+                console.error(`❌ trackDisplay${deck} element not found`);
+                return;
+            }
+            
+            console.log(`✅ trackDisplay${deck} element found`);
+            console.log('Element:', trackDisplay);
+            console.log('Current innerHTML:', trackDisplay.innerHTML);
+            console.log('Has .track-loaded?', !!trackDisplay.querySelector('.track-loaded'));
+            console.log('Has .no-track?', !!trackDisplay.querySelector('.no-track'));
+            console.log('Computed styles:', {
+                display: window.getComputedStyle(trackDisplay).display,
+                visibility: window.getComputedStyle(trackDisplay).visibility,
+                opacity: window.getComputedStyle(trackDisplay).opacity,
+                zIndex: window.getComputedStyle(trackDisplay).zIndex
+            });
+            
+            // Check parent elements
+            let parent = trackDisplay.parentElement;
+            let level = 1;
+            while (parent && level <= 3) {
+                console.log(`Parent level ${level}:`, {
+                    element: parent,
+                    display: window.getComputedStyle(parent).display,
+                    visibility: window.getComputedStyle(parent).visibility,
+                    opacity: window.getComputedStyle(parent).opacity
+                });
+                parent = parent.parentElement;
+                level++;
+            }
+        };
+        
+        // Initialize when DOM is ready
+        function initializeApp() {
+            console.log('Initializing HandMixed Pro...');
+            
+            // Initialize button with working camera code
+            const startBtn = document.getElementById('startHandDJBtn');
+            if (startBtn) {
+                startBtn.onclick = async function() {
+                    console.log('=== START HAND DJ CLICKED ===');
+                    try {
+                        const video = document.getElementById('video');
+                        const canvas = document.getElementById('canvas');
+                        console.log('Video element:', video);
+                        console.log('Canvas element:', canvas);
+                        
+                        // Request camera
+                        console.log('Requesting camera...');
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                width: 1280, 
+                                height: 720 
+                            } 
+                        });
+                        
+                        console.log('Camera stream obtained:', stream);
+                        
+                        // Attach to video element
+                        video.srcObject = stream;
+                        video.style.display = 'block';
+                        await video.play();
+                        
+                        console.log('Video playing');
+                        
+                        // Hide placeholder and show controls
+                        document.getElementById('cameraPlaceholder').style.display = 'none';
+                        document.getElementById('stopHandDJ').style.display = 'block';
+                        document.getElementById('crossfaderContainer').style.display = 'block';
+                        document.getElementById('playBothBtn').style.display = 'block';
+                        document.getElementById('testAudioBtn').style.display = 'block';
+                        
+                        console.log('Camera started successfully');
+                        
+                    } catch (error) {
+                        console.error('Camera error:', error);
+                        alert('Camera error: ' + error.message);
+                    }
+                };
+                console.log('HandMixed Pro initialized');
+            } else {
+                console.error('Start button not found!');
+            }
+        }
+        
+        // Stop function for the stop button
+        function stopHandDJ() {
+            console.log('Stopping Hand DJ...');
+            try {
+                const video = document.getElementById('video');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                
+                // Show placeholder and hide controls
+                document.getElementById('cameraPlaceholder').style.display = 'flex';
+                document.getElementById('stopHandDJ').style.display = 'none';
+                document.getElementById('crossfaderContainer').style.display = 'none';
+                document.getElementById('playBothBtn').style.display = 'none';
+                document.getElementById('testAudioBtn').style.display = 'none';
+                
+                console.log('Hand DJ stopped');
+            } catch (error) {
+                console.error('Error stopping Hand DJ:', error);
+            }
+        }
+        
+        // Make stopHandDJ global
+        window.stopHandDJ = stopHandDJ;
+        
+        // Simple audio test function
+        function testSimpleAudio() {
+            console.log('=== TESTING SIMPLE AUDIO ===');
+            
+            try {
+                // Create a simple Web Audio API test
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('Audio context created, state:', audioCtx.state);
+                
+                // Resume if suspended
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().then(() => {
+                        playTestTone(audioCtx);
+                    });
+                } else {
+                    playTestTone(audioCtx);
+                }
+                
+            } catch (error) {
+                console.error('Simple audio test failed:', error);
+                alert('Audio test failed: ' + error.message);
+            }
+        }
+        
+        function playTestTone(audioCtx) {
+            console.log('Playing test tone...');
+            
+            // Create oscillator
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            // Configure oscillator
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A note
+            
+            // Configure gain
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Play for 1 second
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 1);
+            
+            console.log('Test tone should be playing...');
+            alert('Test tone playing! If you hear it, audio is working.');
+        }
+        
+        // Make it global
+        window.testSimpleAudio = testSimpleAudio;
+        
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+        
+        // Check for pending track load
+        setInterval(() => {
+            if (window.pendingTrackLoad && window.loadTrackToSpecificDeck) {
+                const { track, deck } = window.pendingTrackLoad;
+                console.log('Retrying pending track load...');
+                window.loadTrackToSpecificDeck(track, deck);
+                window.pendingTrackLoad = null;
+            }
+        }, 100);
+        
+        // Create compatibility bridge for main-waveform.js
+        window.deckPlayers = window.simpleDeckData || {};
+        
+        // Override seekToPosition to use our system
+        window.seekToPosition = function(deckLetter, percentage) {
+            if (window.simpleDeckData && window.simpleDeckData[deckLetter] && window.simpleDeckData[deckLetter].audio) {
+                const audio = window.simpleDeckData[deckLetter].audio;
+                if (audio.duration) {
+                    audio.currentTime = (percentage / 100) * audio.duration;
+                }
+            }
+        };
+    </script>
+
+    <style>
+        /* Additional modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00d4ff;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content.deck-b {
+            border-color: #ff8a00;
+            box-shadow: 0 0 30px rgba(255, 138, 0, 0.5);
+        }
+        
+        .modal-content.deck-b .modal-header h3 {
+            color: #ff8a00;
+        }
+        
+        .modal-content.deck-b .search-btn {
+            background: #ff8a00;
+        }
+        
+        .modal-content.deck-b .track-item:hover {
+            border-color: #ff8a00;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #00d4ff;
+            margin: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        
+        .track-search {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .track-search input {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+        }
+        
+        .search-btn {
+            padding: 10px 20px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        
+        .track-item {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .track-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00d4ff;
+        }
+        
+        .track-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .track-artist {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,988 @@
+/* Fullscreen Camera Layout - Exact Match to Design */
+
+/* Reset and Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Orbitron', monospace;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    position: relative;
+    height: 100vh;
+}
+
+/* Main Container - Fullscreen */
+.studio-fullscreen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Camera Section - Full Background */
+.camera-fullscreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#video, #canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#canvas {
+    z-index: 2;
+}
+
+/* Header Bar */
+.header-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.logo-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    background: linear-gradient(45deg, #00d4ff, #ff0080);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.header-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #00d4ff;
+}
+
+.header-btn.logout {
+    background: rgba(255, 0, 80, 0.2);
+    border-color: rgba(255, 0, 80, 0.5);
+}
+
+/* Deck Panels - Overlay Style */
+.deck-overlay-panel {
+    position: absolute;
+    top: 80px;
+    width: 320px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    z-index: 50;
+    border: 2px solid;
+}
+
+.deck-overlay-panel.left {
+    left: 20px;
+    border-color: #00d4ff;
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+}
+
+.deck-overlay-panel.right {
+    right: 20px;
+    border-color: #ff8a00;
+    box-shadow: 0 0 30px rgba(255, 138, 0, 0.3);
+}
+
+/* Deck Header */
+.deck-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.deck-label {
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.deck-label .icon {
+    font-size: 1.5rem;
+}
+
+.deck-overlay-panel.left .deck-label {
+    color: #00d4ff;
+}
+
+.deck-overlay-panel.right .deck-label {
+    color: #ff8a00;
+}
+
+.bpm-display {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Track Display */
+.track-display {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    min-height: 80px;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.track-display:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.02);
+}
+
+/* Colored borders when track is loaded */
+.deck-overlay-panel.left .track-display.has-track {
+    border-color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+}
+
+.deck-overlay-panel.right .track-display.has-track {
+    border-color: #ff8a00;
+    box-shadow: 0 0 15px rgba(255, 138, 0, 0.3);
+}
+
+.deck-overlay-panel.left .track-display:hover {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.deck-overlay-panel.right .track-display:hover {
+    box-shadow: 0 0 20px rgba(255, 138, 0, 0.3);
+}
+
+.track-loaded {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.track-art {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #00d4ff, #ff0080);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.track-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.track-art-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    background: linear-gradient(135deg, #00d4ff, #ff0080);
+}
+
+.track-info {
+    flex: 1;
+}
+
+.track-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.track-artist {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.no-track {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.select-track-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+    font-size: 0.85rem;
+    position: relative;
+    z-index: 10;
+}
+
+.select-track-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Channel Controls */
+.channel-controls {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+
+.channel-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    user-select: none;
+}
+
+.channel-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.channel-btn:active {
+    transform: translateY(0);
+}
+
+.channel-btn.active {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.5);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.channel-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.channel-btn.active .channel-icon {
+    background: #00ff88;
+    color: #000;
+}
+
+.channel-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Main Waveform */
+.main-waveform-section {
+    margin-bottom: 20px;
+}
+
+.main-waveform-container {
+    position: relative;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.main-waveform-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.waveform-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(0, 212, 255, 0.3), rgba(0, 255, 136, 0.3));
+    width: 0%;
+    transition: width 0.1s linear;
+    border-radius: 12px 0 0 12px;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.deck-overlay-panel.right .waveform-progress {
+    background: linear-gradient(90deg, rgba(255, 138, 0, 0.3), rgba(255, 255, 0, 0.3));
+}
+
+.waveform-seek-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.waveform-seek-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 3px;
+    height: 80px;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    border-radius: 2px;
+}
+
+.waveform-seek-slider::-webkit-slider-track {
+    background: transparent;
+    height: 80px;
+    border-radius: 12px;
+}
+
+.track-time-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 10px;
+}
+
+/* Deck Controls */
+.deck-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.play-deck-btn, .stop-deck-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.play-deck-btn {
+    background: linear-gradient(135deg, #00ff88, #00d4ff);
+    color: #000;
+}
+
+.play-deck-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 3px 15px rgba(0, 255, 136, 0.5);
+}
+
+.play-deck-btn.playing {
+    background: linear-gradient(135deg, #ff0080, #ff6b6b);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 3px 15px rgba(255, 0, 128, 0.5); }
+    50% { box-shadow: 0 3px 20px rgba(255, 0, 128, 0.8); }
+    100% { box-shadow: 0 3px 15px rgba(255, 0, 128, 0.5); }
+}
+
+.stop-deck-btn {
+    background: rgba(255, 0, 80, 0.8);
+    color: #fff;
+}
+
+.stop-deck-btn:hover {
+    background: rgba(255, 0, 80, 1);
+    transform: scale(1.05);
+}
+
+/* Volume Control */
+.volume-section {
+    margin-bottom: 20px;
+}
+
+.volume-label {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.volume-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    transition: all 0.3s;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+}
+
+.deck-overlay-panel.right .volume-slider::-webkit-slider-thumb {
+    background: #ff8a00;
+    box-shadow: 0 0 10px rgba(255, 138, 0, 0.5);
+}
+
+.deck-overlay-panel.right .volume-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 15px rgba(255, 138, 0, 0.8);
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+/* Waveform Display */
+.waveform-section {
+    margin-bottom: 15px;
+}
+
+.waveform-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.waveform-display {
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.waveform-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: transparent;
+    border-radius: 8px;
+}
+
+.deck-overlay-panel.left .waveform-display {
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.deck-overlay-panel.right .waveform-display {
+    border-color: rgba(255, 138, 0, 0.3);
+}
+
+/* Hand Indicators */
+.hand-indicator {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hand-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.3s;
+}
+
+.hand-dot.active {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+/* Center Controls */
+.center-controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 60;
+    text-align: center;
+}
+
+/* Gesture Guide */
+.gesture-guide {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(138, 43, 226, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    border-radius: 15px;
+    z-index: 70;
+    min-width: 250px;
+}
+
+.gesture-guide h3 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.gesture-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.gesture-icon {
+    font-size: 1.2rem;
+}
+
+.gesture-desc {
+    flex: 1;
+    text-align: left;
+    font-size: 0.75rem;
+}
+
+/* Stop Hand DJ Button */
+.stop-hand-dj {
+    position: absolute;
+    bottom: 220px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 30px;
+    background: rgba(255, 0, 80, 0.9);
+    border: none;
+    border-radius: 25px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 80;
+    transition: all 0.3s;
+    margin-bottom: 15px;
+}
+
+.stop-hand-dj:hover {
+    background: rgba(255, 0, 80, 1);
+    transform: translateX(-50%) scale(1.05);
+}
+
+/* Crossfader */
+.crossfader-container {
+    position: absolute;
+    bottom: 130px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 70;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px 30px;
+    border-radius: 20px;
+    min-width: 300px;
+    margin-bottom: 15px;
+}
+
+.crossfader-label {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: #00d4ff;
+}
+
+.crossfader-track {
+    position: relative;
+    height: 8px;
+    background: linear-gradient(to right, #00d4ff, #ff8a00);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.crossfader-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    cursor: grab;
+}
+
+.crossfader-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.crossfader-labels .a {
+    color: #00d4ff;
+}
+
+.crossfader-labels .b {
+    color: #ff8a00;
+}
+
+/* Play Both Decks Button */
+.play-both-btn {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #00ff88, #00d4ff);
+    border: none;
+    border-radius: 30px;
+    color: #000;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 70;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.play-both-btn:hover {
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+}
+
+/* Bottom Bar */
+.bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    z-index: 100;
+    border-top: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.library-label {
+    font-size: 1rem;
+    color: #00d4ff;
+    letter-spacing: 1px;
+}
+
+.show-btn {
+    padding: 8px 20px;
+    background: #00ff88;
+    border: none;
+    border-radius: 20px;
+    color: #000;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.show-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 3px 15px rgba(0, 255, 136, 0.5);
+}
+
+/* Professional DJ Studio Badge */
+.dj-studio-badge {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    z-index: 50;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    overflow: auto;
+}
+
+.modal-content {
+    position: relative;
+    background: rgba(0, 0, 0, 0.95);
+    margin: 5% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    border: 2px solid #00d4ff;
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    color: #00d4ff;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #ff0080;
+}
+
+.track-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.track-search input {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    font-family: inherit;
+}
+
+.search-btn {
+    padding: 10px 20px;
+    background: #00d4ff;
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.track-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.track-item {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.track-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #00d4ff;
+    transform: translateX(5px);
+}
+
+.track-info {
+    margin-bottom: 5px;
+}
+
+.track-title {
+    font-weight: 600;
+    color: #fff;
+}
+
+.track-artist {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.track-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.loading, .error, .empty {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.error {
+    color: #ff0080;
+}
+
+/* Camera Placeholder */
+.camera-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    pointer-events: all;
+}
+
+.placeholder-content {
+    text-align: center;
+    z-index: 10;
+    position: relative;
+}
+
+.placeholder-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    opacity: 0.3;
+}
+
+.placeholder-text {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 30px;
+}
+
+.start-camera-btn {
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #00d4ff, #ff0080);
+    border: none;
+    border-radius: 30px;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    z-index: 10;
+    pointer-events: all;
+    display: inline-block;
+}
+
+.start-camera-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(0, 212, 255, 0.5);
+}
+
+.start-camera-btn:active {
+    transform: scale(0.98);
+}

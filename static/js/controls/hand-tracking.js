@@ -2,6 +2,26 @@
 
 console.log('🖐️ Enhanced Multi-Channel Hand Tracking System Loading...');
 
+// Global variables for MediaPipe - use existing if already declared
+video = video || null;
+canvas = canvas || null;
+canvasCtx = canvasCtx || null;
+hands = hands || null;
+camera = camera || null;
+
+// Create updateStatus function if it doesn't exist
+if (typeof updateStatus === 'undefined') {
+    window.updateStatus = function(message, type) {
+        console.log(`[${type}] ${message}`);
+        // Use showNotification if available
+        if (typeof showNotification === 'function') {
+            showNotification(message, type);
+        } else if (typeof showStudioNotification === 'function') {
+            showStudioNotification(message, type);
+        }
+    };
+}
+
 // Check MediaPipe dependencies on load
 function checkMediaPipeDependencies() {
     const requiredClasses = ['Hands', 'Camera', 'drawConnectors', 'drawLandmarks', 'HAND_CONNECTIONS'];
@@ -38,6 +58,8 @@ async function initializeMediaPipe() {
         canvas = document.getElementById('canvas');
         
         if (!video || !canvas) {
+            console.error('Video element:', video);
+            console.error('Canvas element:', canvas);
             throw new Error('Video or canvas element not found');
         }
         
@@ -107,6 +129,9 @@ async function initializeMediaPipe() {
     }
 }
 
+// Initialize hand mask renderer
+let handMaskRenderer = null;
+
 // Enhanced hand detection results processing
 function onEnhancedHandResults(results) {
     if (!canvasCtx || !canvas) {
@@ -115,17 +140,28 @@ function onEnhancedHandResults(results) {
     }
 
     try {
+        // Initialize mask renderer if not already done
+        if (!handMaskRenderer && window.HandMaskRenderer) {
+            handMaskRenderer = new HandMaskRenderer(canvasCtx, canvas);
+        }
+
         // Clear canvas with crisp edges
         canvasCtx.save();
         canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // Draw video frame first (optional - comment out for transparent overlay)
+        // canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+        
         // Set high-quality rendering settings
-        canvasCtx.imageSmoothingEnabled = false;
+        canvasCtx.imageSmoothingEnabled = true;
+        canvasCtx.imageSmoothingQuality = 'high';
         canvasCtx.lineCap = 'round';
         canvasCtx.lineJoin = 'round';
         
         // Reset hand states
         resetHandStates();
+
+        const detectedHands = [];
 
         // Process detected hands with enhanced gesture detection
         if (results.multiHandLandmarks && results.multiHandedness) {
@@ -140,15 +176,30 @@ function onEnhancedHandResults(results) {
                 // Enhanced hand mapping (corrected for camera flip)
                 const isUserLeftHand = handedness.label === 'Right'; // Flipped due to camera
                 const handSide = isUserLeftHand ? 'leftHand' : 'rightHand';
+                const handLabel = isUserLeftHand ? 'Left' : 'Right';
                 
                 // Update enhanced hand state with proper volume calculation
                 updateEnhancedHandState(handSide, landmarks);
                 
-                // Draw enhanced hand landmarks and connections
-                drawEnhancedHandLandmarks(landmarks, isUserLeftHand);
+                // Draw modern hand mask instead of basic landmarks
+                if (handMaskRenderer) {
+                    handMaskRenderer.renderHandMask(landmarks, isUserLeftHand);
+                } else {
+                    // Fallback to original drawing
+                    drawEnhancedHandLandmarks(landmarks, isUserLeftHand);
+                }
                 
                 // Process enhanced hand control with gesture detection
                 processEnhancedHandControl(handSide, landmarks);
+                
+                // Add to detected hands for palm detection
+                detectedHands.push({
+                    label: handLabel,
+                    landmarks: landmarks,
+                    fingerCount: detectFingerCount(landmarks),
+                    height: getHandHeight(landmarks),
+                    centerY: landmarks[9].y // Middle finger base
+                });
             }
         }
 
@@ -157,6 +208,11 @@ function onEnhancedHandResults(results) {
         
         // Process enhanced deck control
         processEnhancedDeckControl();
+        
+        // Update palm detection
+        if (typeof updatePalmDetection === 'function') {
+            updatePalmDetection(detectedHands);
+        }
         
         canvasCtx.restore();
         
@@ -238,6 +294,13 @@ function calculateVolumeFromHandCenter(yPosition) {
     if (volume > 0.95) volume = 1;
     
     return volume;
+}
+
+// Get hand height for compatibility
+function getHandHeight(landmarks) {
+    if (!landmarks || landmarks.length < 21) return 0.5;
+    const handCenter = calculateHandCenter(landmarks);
+    return handCenter.y;
 }
 
 // Process enhanced hand control with multi-channel gestures
@@ -378,7 +441,9 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
                 deck.audioChannels.drums.enabled = false;
                 deck.audioChannels.synth.enabled = true;
             }
-            updateStatus(`Deck ${deckLetter}: Main track only (1 finger)`, 'info');
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: Main track only (1 finger)`, 'info');
+            }
             break;
             
         case 'bass':
@@ -388,7 +453,9 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
                 deck.audioChannels.drums.enabled = false;
                 deck.audioChannels.synth.enabled = false;
             }
-            updateStatus(`Deck ${deckLetter}: Bass only (2 fingers)`, 'info');
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: Bass only (2 fingers)`, 'info');
+            }
             break;
             
         case 'drums':
@@ -398,7 +465,9 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
                 deck.audioChannels.drums.enabled = true;
                 deck.audioChannels.synth.enabled = false;
             }
-            updateStatus(`Deck ${deckLetter}: Drums only (3 fingers)`, 'info');
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: Drums only (3 fingers)`, 'info');
+            }
             break;
             
         case 'all':
@@ -408,13 +477,24 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
                 deck.audioChannels.drums.enabled = true;
                 deck.audioChannels.synth.enabled = true;
             }
-            updateStatus(`Deck ${deckLetter}: All channels (open hand)`, 'info');
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: All channels (open hand)`, 'info');
+            }
             break;
     }
     
     // Update audio channel settings
-    updateAudioChannelSettings(deckLetter);
-    updateChannelIndicators(deckLetter);
+    if (typeof updateAudioChannelSettings === 'function') {
+        updateAudioChannelSettings(deckLetter);
+    }
+    if (typeof updateChannelIndicators === 'function') {
+        updateChannelIndicators(deckLetter);
+    }
+    
+    // Update UI channel highlighting
+    if (window.updateChannelHighlighting) {
+        updateChannelHighlighting(deckLetter, mode);
+    }
     
     // Visual feedback
     showFingerCountFeedback(deckLetter, fingerCount, mode);
@@ -546,52 +626,55 @@ function getGestureEmoji(gestureKey) {
     return emojis[gestureKey] || '✋';
 }
 
-// Draw enhanced hand landmarks with improved visual effects
+// Draw enhanced hand landmarks with modern sleek design
 function drawEnhancedHandLandmarks(landmarks, isUserLeftHand) {
     try {
-        // Enhanced color scheme
-        const handColor = isUserLeftHand ? '#00d4ff' : '#f39c12';
-        const glowColor = isUserLeftHand ? 'rgba(0, 212, 255, 0.4)' : 'rgba(243, 156, 18, 0.4)';
-        const accentColor = isUserLeftHand ? '#ffffff' : '#ffff00';
+        // Modern color scheme
+        const handColor = isUserLeftHand ? '#00d4ff' : '#ff6b35';
+        const glowColor = isUserLeftHand ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 107, 53, 0.2)';
+        const accentColor = '#ffffff';
         
-        // Draw enhanced connections
-        drawEnhancedConnections(landmarks, handColor);
+        // Draw modern connections
+        drawModernConnections(landmarks, handColor);
         
-        // Draw enhanced landmarks
-        drawEnhancedLandmarks(landmarks, handColor, glowColor);
+        // Draw modern landmarks
+        drawModernLandmarks(landmarks, handColor, glowColor);
         
-        // Draw fingertip highlights
-        drawFingertipHighlights(landmarks, accentColor);
+        // Draw minimal fingertip indicators
+        drawModernFingertips(landmarks, accentColor);
         
-        // Draw enhanced hand mask
-        drawEnhancedHandMask(landmarks, isUserLeftHand, handColor, glowColor);
+        // Draw modern hand label
+        drawModernHandLabel(landmarks, isUserLeftHand, handColor);
         
     } catch (error) {
         console.error('❌ Enhanced drawing error:', error);
     }
 }
 
-// Draw enhanced connections with glow effects
-function drawEnhancedConnections(landmarks, color) {
+// Draw modern connections with sleek lines
+function drawModernConnections(landmarks, color) {
     if (typeof drawConnectors === 'undefined' || typeof HAND_CONNECTIONS === 'undefined') {
         return;
     }
     
-    // Draw glow effect
+    // Draw subtle glow
+    canvasCtx.save();
+    canvasCtx.globalAlpha = 0.3;
     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
         color: color,
-        lineWidth: 6
+        lineWidth: 4
     });
+    canvasCtx.restore();
     
-    // Draw main connections
+    // Draw main connections with thin lines
     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
         color: color,
-        lineWidth: 3
+        lineWidth: 1.5
     });
 }
 
-// Draw enhanced landmarks with different sizes
-function drawEnhancedLandmarks(landmarks, color, glowColor) {
+// Draw modern landmarks with minimal style
+function drawModernLandmarks(landmarks, color, glowColor) {
     if (typeof drawLandmarks === 'undefined') return;
     
     const rect = canvas.getBoundingClientRect();
@@ -604,30 +687,49 @@ function drawEnhancedLandmarks(landmarks, color, glowColor) {
         const x = Math.round(landmark.x * canvasWidth);
         const y = Math.round(landmark.y * canvasHeight);
         
-        // Different sizes for different landmark types
-        let radius = 3;
+        // Minimal sizes
+        let radius = 2;
         if ([4, 8, 12, 16, 20].includes(index)) {
-            radius = 5; // Fingertips
-        } else if ([0].includes(index)) {
-            radius = 6; // Wrist
+            radius = 3; // Fingertips slightly larger
         }
         
-        // Draw glow
-        canvasCtx.beginPath();
-        canvasCtx.arc(x, y, radius + 2, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = glowColor;
-        canvasCtx.fill();
+        // Draw subtle glow only for fingertips
+        if ([4, 8, 12, 16, 20].includes(index)) {
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, radius + 4, 0, 2 * Math.PI);
+            canvasCtx.fillStyle = glowColor;
+            canvasCtx.fill();
+        }
         
         // Draw main landmark
         canvasCtx.beginPath();
         canvasCtx.arc(x, y, radius, 0, 2 * Math.PI);
         canvasCtx.fillStyle = color;
         canvasCtx.fill();
+    });
+    
+    canvasCtx.restore();
+}
+
+// Draw modern fingertip indicators
+function drawModernFingertips(landmarks, accentColor) {
+    const fingertips = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky
+    const rect = canvas.getBoundingClientRect();
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
+    
+    canvasCtx.save();
+    canvasCtx.globalAlpha = 0.5;
+    
+    fingertips.forEach(index => {
+        const landmark = landmarks[index];
+        const x = Math.round(landmark.x * canvasWidth);
+        const y = Math.round(landmark.y * canvasHeight);
         
-        // Draw border
+        // Draw subtle circle only
         canvasCtx.beginPath();
-        canvasCtx.arc(x, y, radius, 0, 2 * Math.PI);
-        canvasCtx.strokeStyle = '#ffffff';
+        canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
+        canvasCtx.strokeStyle = accentColor;
         canvasCtx.lineWidth = 1;
         canvasCtx.stroke();
     });
@@ -635,102 +737,69 @@ function drawEnhancedLandmarks(landmarks, color, glowColor) {
     canvasCtx.restore();
 }
 
-// Draw fingertip highlights
-function drawFingertipHighlights(landmarks, accentColor) {
-    const fingertips = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky
-    const rect = canvas.getBoundingClientRect();
-    const canvasWidth = rect.width;
-    const canvasHeight = rect.height;
-    
-    canvasCtx.save();
-    
-    fingertips.forEach(index => {
-        const landmark = landmarks[index];
-        const x = Math.round(landmark.x * canvasWidth);
-        const y = Math.round(landmark.y * canvasHeight);
-        
-        // Draw highlight ring
-        canvasCtx.beginPath();
-        canvasCtx.arc(x, y, 8, 0, 2 * Math.PI);
-        canvasCtx.strokeStyle = accentColor;
-        canvasCtx.lineWidth = 2;
-        canvasCtx.stroke();
-    });
-    
-    canvasCtx.restore();
-}
-
-// Draw enhanced hand mask with gesture indicators
-function drawEnhancedHandMask(landmarks, isUserLeftHand, handColor, glowColor) {
+// Draw modern hand label
+function drawModernHandLabel(landmarks, isUserLeftHand, handColor) {
     if (!landmarks || landmarks.length === 0) return;
 
     try {
-        // Get canvas dimensions
         const rect = canvas.getBoundingClientRect();
         const canvasWidth = rect.width;
         const canvasHeight = rect.height;
 
-        // Get wrist position for deck label
+        // Get wrist position
         const wrist = landmarks[0];
         const wristX = Math.round(wrist.x * canvasWidth);
         const wristY = Math.round(wrist.y * canvasHeight);
 
-        // Draw stylized deck label near wrist
+        // Deck label
         const deckLabel = isUserLeftHand ? 'DECK A' : 'DECK B';
         
         canvasCtx.save();
-        
-        // Create gradient for text
-        const gradient = canvasCtx.createLinearGradient(wristX - 40, wristY, wristX + 40, wristY);
-        gradient.addColorStop(0, handColor);
-        gradient.addColorStop(0.5, '#ffffff');
-        gradient.addColorStop(1, handColor);
-        
-        // Flip canvas for text
         canvasCtx.scale(-1, 1);
         const flippedX = -wristX;
         
-        // Draw glowing text effect
-        canvasCtx.font = 'bold 16px Orbitron, monospace';
+        // Modern minimal text style
+        canvasCtx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         canvasCtx.textAlign = 'center';
         canvasCtx.textBaseline = 'middle';
+        canvasCtx.letterSpacing = '2px';
         
-        // Multiple shadow layers for glow
+        // Subtle shadow
         canvasCtx.shadowColor = handColor;
-        canvasCtx.shadowBlur = 20;
-        canvasCtx.fillStyle = gradient;
-        canvasCtx.fillText(deckLabel, flippedX, wristY + 30);
-        
-        // Second pass for stronger glow
-        canvasCtx.shadowBlur = 10;
-        canvasCtx.fillStyle = '#ffffff';
-        canvasCtx.fillText(deckLabel, flippedX, wristY + 30);
+        canvasCtx.shadowBlur = 8;
+        canvasCtx.fillStyle = handColor;
+        canvasCtx.fillText(deckLabel, flippedX, wristY + 25);
         
         canvasCtx.restore();
         
-        // Draw gesture indicator if active
+        // Draw mode indicator if active
         const hand = handState[isUserLeftHand ? 'leftHand' : 'rightHand'];
-        if (hand && hand.gestures && hand.gestures.mode) {
-            const gestureText = getGestureText(hand);
+        if (hand && hand.gestures && hand.gestures.mode && hand.gestures.mode !== 'all') {
+            const modeText = hand.gestures.mode.toUpperCase();
             
-            if (gestureText) {
-                canvasCtx.save();
-                canvasCtx.scale(-1, 1);
-                
-                canvasCtx.font = 'bold 14px Orbitron, monospace';
-                canvasCtx.textAlign = 'center';
-                canvasCtx.textBaseline = 'middle';
-                canvasCtx.fillStyle = '#00ff88';
-                canvasCtx.shadowColor = '#00ff88';
-                canvasCtx.shadowBlur = 10;
-                
-                canvasCtx.fillText(gestureText, flippedX, wristY + 50);
-                canvasCtx.restore();
-            }
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            
+            // Mode indicator with modern style
+            canvasCtx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            canvasCtx.textAlign = 'center';
+            canvasCtx.textBaseline = 'middle';
+            
+            // Background pill
+            const textWidth = canvasCtx.measureText(modeText).width;
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            canvasCtx.roundRect(flippedX - textWidth/2 - 8, wristY + 38, textWidth + 16, 20, 10);
+            canvasCtx.fill();
+            
+            // Text
+            canvasCtx.fillStyle = '#00ff88';
+            canvasCtx.fillText(modeText, flippedX, wristY + 48);
+            
+            canvasCtx.restore();
         }
         
     } catch (error) {
-        console.error('❌ Enhanced hand mask drawing error:', error);
+        console.error('❌ Modern hand label drawing error:', error);
     }
 }
 
@@ -824,7 +893,9 @@ async function startHandTracking() {
     }
 
     try {
-        updateStatus('Initializing enhanced hand tracking...', 'info');
+        if (typeof updateStatus === 'function') {
+            updateStatus('Initializing enhanced hand tracking...', 'info');
+        }
         console.log('🚀 Starting enhanced hand tracking...');
         
         // Check HTTPS requirement
@@ -856,15 +927,32 @@ async function startHandTracking() {
         // Update state
         appState.isTracking = true;
         
-        // Update UI
-        document.getElementById('video').style.display = 'block';
-        document.getElementById('videoPlaceholder').style.display = 'none';
-        document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('stopBtn').style.display = 'block';
-        document.getElementById('videoContainer').classList.add('hand-tracking');
+        // Update UI - Support both old and new layouts
+        const video = document.getElementById('video');
+        const videoPlaceholder = document.getElementById('videoPlaceholder') || document.getElementById('cameraPlaceholder');
+        const startBtn = document.getElementById('startBtn') || document.getElementById('startCameraBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const videoContainer = document.getElementById('videoContainer');
+        
+        if (video) video.style.display = 'block';
+        if (videoPlaceholder) videoPlaceholder.style.display = 'none';
+        if (startBtn) {
+            if (startBtn.id === 'startCameraBtn') {
+                startBtn.textContent = 'Stop Camera';
+            } else {
+                startBtn.style.display = 'none';
+            }
+        }
+        if (stopBtn) stopBtn.style.display = 'block';
+        if (videoContainer) videoContainer.classList.add('hand-tracking');
         
         console.log('✅ Enhanced hand tracking started successfully');
-        updateStatus('Enhanced hand tracking active - Use gestures to control multi-channel audio!', 'success');
+        if (typeof updateStatus === 'function') {
+            updateStatus('Enhanced hand tracking active - Use gestures to control multi-channel audio!', 'success');
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Hand tracking active - Show palms to play!', 'success');
+        }
         
     } catch (error) {
         console.error('❌ Failed to start enhanced hand tracking:', error);
@@ -879,14 +967,35 @@ async function startHandTracking() {
             errorMessage = 'Camera not supported in this browser.';
         }
         
-        updateStatus(errorMessage, 'error');
+        if (typeof updateStatus === 'function') {
+            updateStatus(errorMessage, 'error');
+        }
+        if (typeof showNotification === 'function') {
+            showNotification(errorMessage, 'error');
+        }
         
         // Reset UI on error
-        document.getElementById('video').style.display = 'none';
-        document.getElementById('videoPlaceholder').style.display = 'block';
-        document.getElementById('startBtn').style.display = 'block';
-        document.getElementById('stopBtn').style.display = 'none';
+        const video = document.getElementById('video');
+        const videoPlaceholder = document.getElementById('videoPlaceholder') || document.getElementById('cameraPlaceholder');
+        const startBtn = document.getElementById('startBtn') || document.getElementById('startCameraBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        
+        if (video) video.style.display = 'none';
+        if (videoPlaceholder) videoPlaceholder.style.display = 'flex';
+        if (startBtn) {
+            if (startBtn.id === 'startCameraBtn') {
+                startBtn.textContent = 'Start Camera';
+            } else {
+                startBtn.style.display = 'block';
+            }
+        }
+        if (stopBtn) stopBtn.style.display = 'none';
     }
+}
+
+// Alias for compatibility
+function initializeHandTracking() {
+    return startHandTracking();
 }
 
 // Enhanced stop hand tracking
@@ -933,12 +1042,24 @@ function stopHandTracking() {
             }
         });
         
-        // Update UI
-        document.getElementById('video').style.display = 'none';
-        document.getElementById('videoPlaceholder').style.display = 'block';
-        document.getElementById('startBtn').style.display = 'block';
-        document.getElementById('stopBtn').style.display = 'none';
-        document.getElementById('videoContainer').classList.remove('hand-tracking');
+        // Update UI - Support both old and new layouts
+        const video = document.getElementById('video');
+        const videoPlaceholder = document.getElementById('videoPlaceholder') || document.getElementById('cameraPlaceholder');
+        const startBtn = document.getElementById('startBtn') || document.getElementById('startCameraBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const videoContainer = document.getElementById('videoContainer');
+        
+        if (video) video.style.display = 'none';
+        if (videoPlaceholder) videoPlaceholder.style.display = 'flex';
+        if (startBtn) {
+            if (startBtn.id === 'startCameraBtn') {
+                startBtn.textContent = 'Start Camera';
+            } else {
+                startBtn.style.display = 'block';
+            }
+        }
+        if (stopBtn) stopBtn.style.display = 'none';
+        if (videoContainer) videoContainer.classList.remove('hand-tracking');
         
         // Clear canvas
         if (canvasCtx) {
@@ -949,16 +1070,33 @@ function stopHandTracking() {
         updateEnhancedHandIndicators();
         
         // Reset deck overlays
-        document.getElementById('deckAOverlay').classList.remove('hand-active');
-        document.getElementById('deckBOverlay').classList.remove('hand-active');
+        const deckAOverlay = document.getElementById('deckAOverlay');
+        const deckBOverlay = document.getElementById('deckBOverlay');
+        if (deckAOverlay) deckAOverlay.classList.remove('hand-active');
+        if (deckBOverlay) deckBOverlay.classList.remove('hand-active');
         
         console.log('✅ Enhanced hand tracking stopped');
-        updateStatus('Enhanced hand tracking stopped', 'info');
+        if (typeof updateStatus === 'function') {
+            updateStatus('Enhanced hand tracking stopped', 'info');
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Hand tracking stopped', 'info');
+        }
         
     } catch (error) {
         console.error('❌ Error stopping enhanced hand tracking:', error);
-        updateStatus('Error stopping enhanced hand tracking', 'error');
+        if (typeof updateStatus === 'function') {
+            updateStatus('Error stopping enhanced hand tracking', 'error');
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Error stopping hand tracking', 'error');
+        }
     }
+}
+
+// Alias for compatibility
+function stopMediaPipeHands() {
+    stopHandTracking();
 }
 
 // Set up high DPI canvas (enhanced version)
@@ -995,6 +1133,23 @@ function calculateDistance(point1, point2) {
     const dy = point1.y - point2.y;
     const dz = (point1.z || 0) - (point2.z || 0);
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// Polyfill for roundRect if not supported
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        this.beginPath();
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.lineTo(x + width, y + height - radius);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.lineTo(x + radius, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.lineTo(x, y + radius);
+        this.quadraticCurveTo(x, y, x + radius, y);
+        this.closePath();
+    };
 }
 
 // Check MediaPipe status on window load

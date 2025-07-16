@@ -13,8 +13,10 @@ from django.views.decorators.http import require_http_methods
 logger = logging.getLogger(__name__)
 
 def home(request):
-    """Main DJ Studio page"""
-    return render(request, 'handmixed_auth/studio.html')
+    """Main landing page - show login if not authenticated"""
+    if not request.user.is_authenticated:
+        return render(request, 'handmixed_auth/login.html')
+    return render(request, 'handmixed_auth/studio_fullscreen.html')
 
 def login_view(request):
     """Simple demo login"""

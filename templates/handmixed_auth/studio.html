@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="{% static 'css/music-hub.css' %}">
     <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
     <link rel="stylesheet" href="{% static 'css/bpm-styles.css' %}">
-    <link rel="stylesheet" href="{% static 'css/multi-channel-styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/multi-channel.css' %}">
 </head>
 
 <body>
@@ -91,18 +91,21 @@
             </div>
 
             <!-- Professional Audio Channel Indicators -->
-            <div class="audio-channels">
-                <div class="channel-indicator" id="deckABassChannel">
+            <div class="audio-channels deck-overlay-panel left">
+                <div class="channel-indicator channel-btn active" id="deckABassChannel" data-channel="bass" onclick="toggleAudioChannel('A', 'bass')">
                     <span class="channel-label">👆 Bass/Kick</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
-                <div class="channel-indicator" id="deckADrumsChannel">
+                <div class="channel-indicator channel-btn active" id="deckADrumsChannel" data-channel="drums" onclick="toggleAudioChannel('A', 'drums')">
                     <span class="channel-label">🖕 Drums</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
-                <div class="channel-indicator" id="deckASynthChannel">
+                <div class="channel-indicator channel-btn active" id="deckASynthChannel" data-channel="synth" onclick="toggleAudioChannel('A', 'synth')">
                     <span class="channel-label">💍 Synth</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
             </div>
 
@@ -148,18 +151,21 @@
             </div>
 
             <!-- Professional Audio Channel Indicators -->
-            <div class="audio-channels">
-                <div class="channel-indicator" id="deckBBassChannel">
+            <div class="audio-channels deck-overlay-panel right">
+                <div class="channel-indicator channel-btn active" id="deckBBassChannel" data-channel="bass" onclick="toggleAudioChannel('B', 'bass')">
                     <span class="channel-label">👆 Bass/Kick</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
-                <div class="channel-indicator" id="deckBDrumsChannel">
+                <div class="channel-indicator channel-btn active" id="deckBDrumsChannel" data-channel="drums" onclick="toggleAudioChannel('B', 'drums')">
                     <span class="channel-label">🖕 Drums</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
-                <div class="channel-indicator" id="deckBSynthChannel">
+                <div class="channel-indicator channel-btn active" id="deckBSynthChannel" data-channel="synth" onclick="toggleAudioChannel('B', 'synth')">
                     <span class="channel-label">💍 Synth</span>
                     <div class="channel-status active"></div>
+                    <div class="channel-icon">●</div>
                 </div>
             </div>
 
@@ -304,6 +310,10 @@
     <script src="{% static 'js/audio/source-separation.js' %}"></script>
     <script src="{% static 'js/audio/wavesurfer-setup.js' %}"></script>
     <script src="{% static 'js/audio/deck-manager.js' %}"></script>
+    
+    <!-- Deck Functions -->
+    <script src="{% static 'js/deck/simple-deck-loader.js' %}"></script>
+    <script src="{% static 'js/deck/advanced-audio-splitter.js' %}"></script>
         
     <!-- Controls -->
     <script src="{% static 'js/controls/crossfader.js' %}"></script>

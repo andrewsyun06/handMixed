@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandMixed Pro - DJ Studio</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/static/css/fullscreen-cam-layout.css">
+    
+    <!-- Required Libraries -->
+    <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
+    <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://unpkg.com/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/wavesurfer.min.js"></script>
+</head>
+<body>
+    <div class="studio-wrapper">
+        <!-- Header -->
+        <header class="studio-header">
+            <div class="header-left">
+                <h1 class="studio-title">HandMixed PRO</h1>
+            </div>
+            <div class="header-center">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Ready</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-icon" onclick="window.location.href='/logout/'">
+                    <span>🚪</span> Exit
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="studio-main">
+            <!-- Left Deck -->
+            <div class="deck-panel left-deck" id="deckA">
+                <div class="deck-header">
+                    <h2 class="deck-title">DECK A</h2>
+                    <div class="deck-status">
+                        <span class="bpm-display">-- BPM</span>
+                        <span class="time-display">0:00</span>
+                    </div>
+                </div>
+                
+                <div class="deck-display">
+                    <div class="track-info-panel">
+                        <div class="track-artwork">
+                            <img src="/static/img/default-artwork.png" alt="Track artwork">
+                        </div>
+                        <div class="track-details">
+                            <div class="track-title">No track loaded</div>
+                            <div class="track-artist">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="waveform-container" id="waveformA">
+                        <div class="waveform-placeholder">Load a track to see waveform</div>
+                    </div>
+                </div>
+                
+                <div class="deck-controls">
+                    <button class="deck-btn play-btn" id="playBtnA">▶</button>
+                    <button class="deck-btn cue-btn">CUE</button>
+                    <button class="deck-btn loop-btn">LOOP</button>
+                    <button class="deck-btn load-btn" onclick="showTrackBrowser('A')">LOAD</button>
+                </div>
+                
+                <div class="deck-volume">
+                    <label>Volume</label>
+                    <input type="range" class="volume-slider" id="volumeA" min="0" max="100" value="75">
+                    <div class="volume-meter" id="volumeMeterA"></div>
+                </div>
+                
+                <div class="deck-eq">
+                    <div class="eq-knob">
+                        <label>HIGH</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                    <div class="eq-knob">
+                        <label>MID</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                    <div class="eq-knob">
+                        <label>LOW</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Section with Camera -->
+            <div class="center-section">
+                <div class="camera-container">
+                    <div class="camera-header">
+                        <h3>Hand Tracking</h3>
+                        <button class="btn-small" id="startCameraBtn">Start Camera</button>
+                    </div>
+                    <div class="camera-view">
+                        <video id="video" autoplay muted playsinline hidden></video>
+                        <canvas id="canvas"></canvas>
+                        <div class="camera-placeholder" id="cameraPlaceholder">
+                            <div class="placeholder-icon">📷</div>
+                            <div class="placeholder-text">Click "Start Camera" to enable hand tracking</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gesture Controls Overlay -->
+                    <div class="gesture-overlay">
+                        <div class="gesture-info left-hand">
+                            <h4>Left Hand (Deck A)</h4>
+                            <div class="gesture-status">
+                                <span class="gesture-icon">✋</span>
+                                <span class="gesture-text">Not detected</span>
+                            </div>
+                        </div>
+                        <div class="gesture-info right-hand">
+                            <h4>Right Hand (Deck B)</h4>
+                            <div class="gesture-status">
+                                <span class="gesture-icon">✋</span>
+                                <span class="gesture-text">Not detected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Crossfader and Master Controls -->
+                <div class="master-controls">
+                    <div class="crossfader-section">
+                        <label>Crossfader</label>
+                        <div class="crossfader-track">
+                            <input type="range" class="crossfader" id="crossfader" min="0" max="100" value="50">
+                            <div class="crossfader-labels">
+                                <span>A</span>
+                                <span>B</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="master-buttons">
+                        <button class="master-btn" id="playBothBtn">
+                            <span class="btn-icon">▶▶</span>
+                            <span class="btn-text">PLAY BOTH</span>
+                        </button>
+                        <button class="master-btn" id="syncBtn">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">SYNC</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Deck -->
+            <div class="deck-panel right-deck" id="deckB">
+                <div class="deck-header">
+                    <h2 class="deck-title">DECK B</h2>
+                    <div class="deck-status">
+                        <span class="bpm-display">-- BPM</span>
+                        <span class="time-display">0:00</span>
+                    </div>
+                </div>
+                
+                <div class="deck-display">
+                    <div class="track-info-panel">
+                        <div class="track-artwork">
+                            <img src="/static/img/default-artwork.png" alt="Track artwork">
+                        </div>
+                        <div class="track-details">
+                            <div class="track-title">No track loaded</div>
+                            <div class="track-artist">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="waveform-container" id="waveformB">
+                        <div class="waveform-placeholder">Load a track to see waveform</div>
+                    </div>
+                </div>
+                
+                <div class="deck-controls">
+                    <button class="deck-btn play-btn" id="playBtnB">▶</button>
+                    <button class="deck-btn cue-btn">CUE</button>
+                    <button class="deck-btn loop-btn">LOOP</button>
+                    <button class="deck-btn load-btn" onclick="showTrackBrowser('B')">LOAD</button>
+                </div>
+                
+                <div class="deck-volume">
+                    <label>Volume</label>
+                    <input type="range" class="volume-slider" id="volumeB" min="0" max="100" value="75">
+                    <div class="volume-meter" id="volumeMeterB"></div>
+                </div>
+                
+                <div class="deck-eq">
+                    <div class="eq-knob">
+                        <label>HIGH</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                    <div class="eq-knob">
+                        <label>MID</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                    <div class="eq-knob">
+                        <label>LOW</label>
+                        <input type="range" class="eq-slider" min="-20" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Track Browser Modal -->
+        <div class="modal" id="trackBrowserModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Select Track for <span id="modalDeckLabel">Deck A</span></h3>
+                    <button class="modal-close" onclick="hideTrackBrowser()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="track-search">
+                        <input type="text" id="trackSearchInput" placeholder="Search tracks...">
+                        <button class="search-btn" onclick="searchTracks()">Search</button>
+                    </div>
+                    <div class="track-list" id="trackList">
+                        <!-- Tracks will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="/static/js/config/app-config.js"></script>
+    <script src="/static/js/state/app-state.js"></script>
+    <script src="/static/js/deck/deck-manager.js"></script>
+    <script src="/static/js/deck/deck-controls.js"></script>
+    <script src="/static/js/controls/hand-tracking.js"></script>
+    <script src="/static/js/gestures/hand-gestures.js"></script>
+    <script src="/static/js/gestures/palm-detector.js"></script>
+    <script src="/static/js/ui/center-cam-ui.js"></script>
+    
+    <script>
+        // Initialize the studio
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎛️ HandMixed Pro - Center Camera Layout initialized');
+            
+            // Load trending tracks on startup
+            loadTrendingTracks();
+            
+            // Initialize hand tracking button
+            document.getElementById('startCameraBtn').addEventListener('click', function() {
+                if (this.textContent === 'Start Camera') {
+                    startHandTracking();
+                    this.textContent = 'Stop Camera';
+                } else {
+                    stopHandTracking();
+                    this.textContent = 'Start Camera';
+                }
+            });
+            
+            // Initialize play both button
+            document.getElementById('playBothBtn').addEventListener('click', function() {
+                playBothDecks();
+            });
+        });
+    </script>
+</body>
+</html>
