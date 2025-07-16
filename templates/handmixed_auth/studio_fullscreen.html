@@ -35,7 +35,7 @@
 
         <!-- Header Bar -->
         <header class="header-bar">
-            <h1 class="logo-title">HANDMIXED PRO</h1>
+            <h1 class="logo-title">HANDMIXED</h1>
             <div class="header-controls">
                 <button class="header-btn logout" onclick="window.location.href='/logout/'">LOGOUT</button>
             </div>
@@ -60,15 +60,15 @@
             <!-- Channel Controls -->
             <div class="channel-controls">
                 <div class="channel-btn active" data-channel="bass">
-                    <div class="channel-icon">B</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">BASS</span>
                 </div>
                 <div class="channel-btn active" data-channel="drums">
-                    <div class="channel-icon">D</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">DRUMS</span>
                 </div>
                 <div class="channel-btn active" data-channel="synth">
-                    <div class="channel-icon">S</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">SYNTH</span>
                 </div>
             </div>
@@ -79,7 +79,7 @@
                     <canvas class="main-waveform-canvas" id="mainWaveformCanvasA"></canvas>
                     <div class="waveform-progress" id="waveformProgressA"></div>
                     <input type="range" class="waveform-seek-slider" id="seekSliderA" min="0" max="100" value="0" 
-                           oninput="if(window.simpleDeckData && window.simpleDeckData.A.audio) { window.simpleDeckData.A.audio.currentTime = (this.value/100) * window.simpleDeckData.A.audio.duration; }">
+                           oninput="window.handleSeek('A', this.value)">
                 </div>
                 <div class="track-time-info">
                     <span id="currentTimeA">0:00</span> / <span id="durationA">0:00</span>
@@ -88,16 +88,16 @@
 
             <!-- Deck Controls -->
             <div class="deck-controls">
-                <button class="play-deck-btn" onclick="toggleDeckPlayback('A')">
+                <button class="play-deck-btn" onclick="window.toggleDeckPlayback('A')">
                     PLAY DECK A
                 </button>
             </div>
 
             <!-- Volume -->
             <div class="volume-section">
-                <div class="volume-label">Volume <span id="volumeLabelA">70</span>%</div>
-                <input type="range" class="volume-slider" id="volumeSliderA" min="0" max="100" value="70" 
-                       oninput="updateDeckVolume('A', this.value)">
+                <div class="volume-label">Volume <span id="volumeLabelA">50</span>%</div>
+                <input type="range" class="volume-slider" id="volumeSliderA" min="0" max="100" value="50" 
+                       oninput="window.updateDeckVolume('A', this.value)">
             </div>
 
             <!-- Waveforms -->
@@ -120,10 +120,6 @@
                 </div>
             </div>
 
-            <!-- Hand Indicator -->
-            <div class="hand-indicator">
-                <span class="hand-dot" id="leftHandDot"></span>
-            </div>
         </div>
 
         <!-- Right Deck Panel -->
@@ -145,15 +141,15 @@
             <!-- Channel Controls -->
             <div class="channel-controls">
                 <div class="channel-btn active" data-channel="bass">
-                    <div class="channel-icon">B</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">BASS</span>
                 </div>
                 <div class="channel-btn active" data-channel="drums">
-                    <div class="channel-icon">D</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">DRUMS</span>
                 </div>
                 <div class="channel-btn active" data-channel="synth">
-                    <div class="channel-icon">S</div>
+                    <div class="channel-led"></div>
                     <span class="channel-label">SYNTH</span>
                 </div>
             </div>
@@ -164,7 +160,7 @@
                     <canvas class="main-waveform-canvas" id="mainWaveformCanvasB"></canvas>
                     <div class="waveform-progress" id="waveformProgressB"></div>
                     <input type="range" class="waveform-seek-slider" id="seekSliderB" min="0" max="100" value="0" 
-                           oninput="if(window.simpleDeckData && window.simpleDeckData.B.audio) { window.simpleDeckData.B.audio.currentTime = (this.value/100) * window.simpleDeckData.B.audio.duration; }">
+                           oninput="window.handleSeek('B', this.value)">
                 </div>
                 <div class="track-time-info">
                     <span id="currentTimeB">0:00</span> / <span id="durationB">0:00</span>
@@ -173,16 +169,16 @@
 
             <!-- Deck Controls -->
             <div class="deck-controls">
-                <button class="play-deck-btn" onclick="toggleDeckPlayback('B')">
+                <button class="play-deck-btn" onclick="window.toggleDeckPlayback('B')">
                     PLAY DECK B
                 </button>
             </div>
 
             <!-- Volume -->
             <div class="volume-section">
-                <div class="volume-label">Volume <span id="volumeLabelB">70</span>%</div>
-                <input type="range" class="volume-slider" id="volumeSliderB" min="0" max="100" value="70" 
-                       oninput="updateDeckVolume('B', this.value)">
+                <div class="volume-label">Volume <span id="volumeLabelB">50</span>%</div>
+                <input type="range" class="volume-slider" id="volumeSliderB" min="0" max="100" value="50" 
+                       oninput="window.updateDeckVolume('B', this.value)">
             </div>
 
             <!-- Waveforms -->
@@ -205,10 +201,6 @@
                 </div>
             </div>
 
-            <!-- Hand Indicator -->
-            <div class="hand-indicator">
-                <span class="hand-dot" id="rightHandDot"></span>
-            </div>
         </div>
 
 
@@ -236,11 +228,6 @@
             TEST AUDIO
         </button>
 
-        <!-- Bottom Bar -->
-        <footer class="bottom-bar">
-            <div class="library-label">AUDIUS MUSIC LIBRARY</div>
-            <button class="show-btn" onclick="showMusicLibrary()">SHOW</button>
-        </footer>
 
     </div>
 
@@ -255,6 +242,31 @@
                 <div class="track-search">
                     <input type="text" id="trackSearchInput" placeholder="Search tracks...">
                     <button class="search-btn" onclick="searchTracks()">Search</button>
+                </div>
+                <div class="genre-filters">
+                    <button class="genre-btn active" data-genre="all" onclick="filterByGenre('all')">ALL</button>
+                    <button class="genre-btn" data-genre="house" onclick="filterByGenre('house')">HOUSE</button>
+                    <button class="genre-btn" data-genre="techno" onclick="filterByGenre('techno')">TECHNO</button>
+                    <button class="genre-btn" data-genre="dubstep" onclick="filterByGenre('dubstep')">DUBSTEP</button>
+                    <button class="genre-btn" data-genre="trap" onclick="filterByGenre('trap')">TRAP</button>
+                    <button class="genre-btn" data-genre="drum & bass" onclick="filterByGenre('drum & bass')">DRUM & BASS</button>
+                    <button class="genre-btn" data-genre="trance" onclick="filterByGenre('trance')">TRANCE</button>
+                    <button class="genre-btn" data-genre="edm" onclick="filterByGenre('edm')">EDM</button>
+                </div>
+                <div class="bpm-filter-section">
+                    <div class="bpm-filter-label">
+                        <span>BPM Range:</span>
+                        <span id="bpmRangeDisplay">115 - 125</span>
+                    </div>
+                    <input type="range" class="bpm-slider" id="bpmSlider" min="60" max="180" value="120" 
+                           oninput="updateBPMFilter(this.value)">
+                    <div class="bpm-slider-labels">
+                        <span>60</span>
+                        <span>90</span>
+                        <span>120</span>
+                        <span>150</span>
+                        <span>180</span>
+                    </div>
                 </div>
                 <div class="track-list" id="trackList">
                     <!-- Tracks will be loaded here -->
@@ -279,16 +291,29 @@
     <script src="/static/js/deck/simple-deck-loader.js"></script>
     <script src="/static/js/deck/advanced-audio-splitter.js"></script>
     <script src="/static/js/deck/audio-waveform-renderer.js"></script>
+    <script src="/static/js/mediapipe-hand-init.js"></script>
     
     <script>
+        // Current genre filter
+        window.currentGenreFilter = 'all';
+        window.currentBPM = 120;
+        window.bpmTolerance = 5;
+        
         // Define selectTrackForDeck function directly in HTML to ensure it's available
         window.selectTrackForDeck = function(deck) {
             console.log(`🎵 Opening track browser for Deck ${deck} (from inline script)`);
             
-            // Store current deck selection
+            // Store current deck selection globally
+            window.currentDeckSelection = deck;
+            // Don't reset genre filter - keep the last selected genre
             if (typeof studioState !== 'undefined') {
                 studioState.currentDeckSelection = deck;
             }
+            
+            // Reset genre buttons
+            document.querySelectorAll('.genre-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.genre === 'all');
+            });
             
             // Simple modal display
             const modal = document.getElementById('trackBrowserModal');
@@ -309,41 +334,30 @@
                 const label = document.getElementById('modalDeckLabel');
                 if (label) label.textContent = `Deck ${deck}`;
                 
-                // Load tracks if function exists
-                if (typeof loadTrendingTracks === 'function') {
-                    loadTrendingTracks();
-                } else {
-                    console.log('loadTrendingTracks not yet available, trying fetch directly...');
-                    const trackList = document.getElementById('trackList');
-                    if (trackList) {
-                        trackList.innerHTML = '<div class="loading">Loading tracks...</div>';
-                        
-                        // Try direct fetch
-                        fetch('/api/audius/trending/?limit=30')
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.tracks && data.tracks.length > 0) {
-                                    const html = data.tracks.map((track, index) => `
-                                        <div class="track-item" onclick="window.selectTrackDirect(${index}, '${deck}')">
-                                            <div class="track-info">
-                                                <div class="track-title">${track.title || 'Unknown'}</div>
-                                                <div class="track-artist">${track.user?.username || track.artist || 'Unknown Artist'}</div>
-                                            </div>
-                                        </div>
-                                    `).join('');
-                                    trackList.innerHTML = html;
-                                    
-                                    // Store tracks for selection
-                                    window.tempTracks = data.tracks;
-                                } else {
-                                    trackList.innerHTML = '<div class="error">No tracks available</div>';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Failed to load tracks:', error);
-                                trackList.innerHTML = '<div class="error">Failed to load tracks</div>';
-                            });
-                    }
+                // Load DJ-friendly tracks with BPM filter
+                const trackList = document.getElementById('trackList');
+                if (trackList) {
+                    // Show loading spinner immediately
+                    trackList.innerHTML = `
+                        <div class="loading">
+                            <div class="loading-spinner">
+                                <div class="vinyl-record">
+                                    <div class="record-label"></div>
+                                    <div class="tonearm-dot"></div>
+                                </div>
+                            </div>
+                            <div class="loading-text">Loading tracks...</div>
+                        </div>
+                    `;
+                    // Then load tracks
+                    setTimeout(() => loadTracksByGenre('all'), 100);
+                }
+                
+                // Focus search input
+                const searchInput = document.getElementById('trackSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
                 }
             } else {
                 console.error('Modal not found!');
@@ -361,7 +375,7 @@
         
         // Direct track selection
         window.selectTrackDirect = function(index, deck) {
-            console.log(`Selecting track ${index} for deck ${deck}`);
+            console.log(`🎯 selectTrackDirect: Selecting track ${index} for deck ${deck}`);
             if (window.tempTracks && window.tempTracks[index]) {
                 const track = window.tempTracks[index];
                 console.log('Selected track:', track);
@@ -369,18 +383,22 @@
                 console.log('Track artwork:', track.artwork);
                 console.log('Track user:', track.user);
                 
-                // Use our new simple loader
+                // ALWAYS use the simple loader - this is the correct way
                 if (window.loadTrackToSpecificDeck) {
-                    console.log('Using loadTrackToSpecificDeck');
+                    console.log('✅ Using loadTrackToSpecificDeck');
                     window.loadTrackToSpecificDeck(track, deck);
                 } else {
-                    console.error('loadTrackToSpecificDeck not available yet');
+                    console.error('❌ loadTrackToSpecificDeck not available yet');
                     // Store for retry
                     window.pendingTrackLoad = { track, deck };
                 }
                 
+                // DO NOT call updateTrackDisplayDirect here - let loadTrackToSpecificDeck handle it
+                
                 // Hide modal
                 window.hideTrackBrowser();
+            } else {
+                console.error('❌ No track found at index', index);
             }
         };
         
@@ -476,6 +494,171 @@
                 })
                 .catch(error => {
                     console.error('Search failed:', error);
+                    trackList.innerHTML = '<div class="error">Search failed</div>';
+                });
+        };
+        
+        // Update BPM filter
+        window.updateBPMFilter = function(value) {
+            window.currentBPM = parseInt(value);
+            
+            // Calculate tolerance based on BPM range
+            if (window.currentBPM < 90) {
+                window.bpmTolerance = 3;
+            } else if (window.currentBPM < 120) {
+                window.bpmTolerance = 5;
+            } else if (window.currentBPM < 140) {
+                window.bpmTolerance = 7;
+            } else {
+                window.bpmTolerance = 10;
+            }
+            
+            // Update display
+            const minBPM = window.currentBPM - window.bpmTolerance;
+            const maxBPM = window.currentBPM + window.bpmTolerance;
+            document.getElementById('bpmRangeDisplay').textContent = `${minBPM} - ${maxBPM}`;
+            
+            // Reload tracks with new BPM filter
+            loadTracksByGenre(window.currentGenreFilter);
+        };
+        
+        // Filter by genre
+        window.filterByGenre = function(genre) {
+            console.log(`🎵 Filtering by genre: ${genre}`);
+            
+            // Update active button
+            document.querySelectorAll('.genre-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.genre === genre);
+            });
+            
+            // Store current genre
+            window.currentGenreFilter = genre;
+            
+            // Load tracks for this genre
+            loadTracksByGenre(genre);
+        };
+        
+        // Load tracks by genre
+        window.loadTracksByGenre = function(genre) {
+            const trackList = document.getElementById('trackList');
+            const deck = window.currentDeckSelection || 'A';
+            
+            // Clear any existing error states
+            trackList.classList.remove('error-state');
+            trackList.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner">
+                        <div class="vinyl-record">
+                            <div class="record-label"></div>
+                            <div class="tonearm-dot"></div>
+                        </div>
+                    </div>
+                    <div class="loading-text">Loading tracks...</div>
+                </div>
+            `;
+            
+            let url;
+            if (genre === 'all') {
+                // Use trending for 'all' genres
+                url = `/api/audius/trending/?limit=50&bpm_filter=true&target_bpm=${window.currentBPM}&bpm_tolerance=${window.bpmTolerance}`;
+            } else {
+                // Use genre playlists for specific genres
+                url = `/api/audius/genre-playlists/?genre=${encodeURIComponent(genre)}&bpm_filter=true&target_bpm=${window.currentBPM}&bpm_tolerance=${window.bpmTolerance}`;
+            }
+            
+            console.log(`Loading tracks: genre=${genre}, BPM=${window.currentBPM}±${window.bpmTolerance}`);
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.tracks && data.tracks.length > 0) {
+                        displayTracks(data.tracks, deck);
+                    } else {
+                        const minBPM = window.currentBPM - window.bpmTolerance;
+                        const maxBPM = window.currentBPM + window.bpmTolerance;
+                        trackList.innerHTML = `<div class="empty">No ${genre} tracks found between ${minBPM}-${maxBPM} BPM.<br>Try adjusting the BPM slider.</div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load tracks:', error);
+                    trackList.innerHTML = '<div class="error">Failed to load tracks. Click to retry.</div>';
+                    trackList.classList.add('error-state');
+                    trackList.onclick = () => loadTracksByGenre(genre);
+                });
+        };
+        
+        // Display tracks function
+        window.displayTracks = function(tracks, deck) {
+            const trackList = document.getElementById('trackList');
+            if (!tracks || tracks.length === 0) {
+                trackList.innerHTML = '<div class="empty">No tracks found</div>';
+                return;
+            }
+            
+            const html = tracks.map((track, index) => {
+                const bpmDisplay = track.bpm ? `${Math.round(track.bpm)} BPM` : '';
+                const genreDisplay = track.genre || '';
+                
+                return `
+                    <div class="track-item" onclick="window.selectTrackDirect(${index}, '${deck}')">
+                        <div class="track-info">
+                            <div class="track-title">${track.title || 'Unknown'}</div>
+                            <div class="track-artist">${track.artist || 'Unknown Artist'}</div>
+                            <div class="track-meta">
+                                ${bpmDisplay ? `<span class="track-bpm">${bpmDisplay}</span>` : ''}
+                                ${genreDisplay ? `<span class="track-genre">${genreDisplay}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            trackList.innerHTML = html;
+            window.tempTracks = tracks;
+        };
+        
+        // Search tracks function with DJ filter
+        window.searchTracks = function() {
+            const query = document.getElementById('trackSearchInput').value.trim();
+            if (!query) {
+                // If empty, reload current genre
+                loadTracksByGenre(window.currentGenreFilter);
+                return;
+            }
+            
+            const trackList = document.getElementById('trackList');
+            trackList.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner">
+                        <div class="vinyl-record">
+                            <div class="record-label"></div>
+                            <div class="tonearm-dot"></div>
+                        </div>
+                    </div>
+                    <div class="loading-text">Searching DJ tracks...</div>
+                </div>
+            `;
+            
+            const deck = window.currentDeckSelection || 'A';
+            
+            // Search with BPM filter, don't append genre to query
+            fetch(`/api/audius/search/?q=${encodeURIComponent(query)}&limit=50&bpm_filter=true&target_bpm=${window.currentBPM}&bpm_tolerance=${window.bpmTolerance}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.tracks && data.tracks.length > 0) {
+                        // Display all search results, genre filtering is done by the user's genre selection
+                        displayTracks(data.tracks, deck);
+                    } else {
+                        trackList.innerHTML = '<div class="empty">No DJ tracks found matching your search</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
                     trackList.innerHTML = '<div class="error">Search failed</div>';
                 });
         };
@@ -577,6 +760,21 @@
                         
                         console.log('Camera started successfully');
                         
+                        // Initialize MediaPipe Hands after a short delay
+                        setTimeout(() => {
+                            console.log('🔍 Checking MediaPipe availability...');
+                            console.log('Hands available:', typeof Hands !== 'undefined');
+                            console.log('Camera available:', typeof Camera !== 'undefined');
+                            console.log('drawConnectors available:', typeof drawConnectors !== 'undefined');
+                            
+                            if (window.initializeMediaPipeHands) {
+                                console.log('📸 Calling initializeMediaPipeHands...');
+                                window.initializeMediaPipeHands();
+                            } else {
+                                console.error('❌ MediaPipe initialization function not found!');
+                            }
+                        }, 500); // Wait for libraries to load
+                        
                     } catch (error) {
                         console.error('Camera error:', error);
                         alert('Camera error: ' + error.message);
@@ -592,10 +790,24 @@
         function stopHandDJ() {
             console.log('Stopping Hand DJ...');
             try {
+                // Stop MediaPipe camera if it exists
+                if (window.mediaPipeCamera) {
+                    window.mediaPipeCamera.stop();
+                    window.mediaPipeCamera = null;
+                }
+                
+                // Stop video stream
                 const video = document.getElementById('video');
                 if (video && video.srcObject) {
                     video.srcObject.getTracks().forEach(track => track.stop());
                     video.srcObject = null;
+                }
+                
+                // Clear canvas
+                const canvas = document.getElementById('canvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                 }
                 
                 // Show placeholder and hide controls
@@ -668,11 +880,351 @@
         // Make it global
         window.testSimpleAudio = testSimpleAudio;
         
+        // MediaPipe Hands Initialization - Inline Version
+        window.initializeMediaPipeHands = function() {
+            console.log('🚀 Initializing MediaPipe Hands (Inline)...');
+            
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            
+            if (!video || !canvas) {
+                console.error('Video or canvas element not found!');
+                return;
+            }
+            
+            console.log('📹 Video element:', video);
+            console.log('🎨 Canvas element:', canvas);
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size to match video
+            function resizeCanvas() {
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
+                console.log(`📐 Canvas resized to ${canvas.width}x${canvas.height}`);
+            }
+            
+            video.addEventListener('loadedmetadata', resizeCanvas);
+            resizeCanvas();
+            
+            try {
+                console.log('🤲 Creating Hands instance...');
+                const hands = new Hands({
+                    locateFile: (file) => {
+                        const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                        console.log(`📁 Loading: ${file}`);
+                        return url;
+                    }
+                });
+                
+                console.log('⚙️ Setting Hands options...');
+                hands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.7,
+                    minTrackingConfidence: 0.5
+                });
+                
+                window.handTracker = hands;
+                
+                // Volume control state
+                const volumeState = {
+                    leftHandY: null,
+                    rightHandY: null,
+                    lastUpdate: 0,
+                    updateInterval: 100,
+                    smoothing: 0.3
+                };
+                
+                // Gesture state
+                const gestureState = {
+                    lastLeftFingers: 0,
+                    lastRightFingers: 0,
+                    lastGesture: 0,
+                    debounce: 500
+                };
+                
+                console.log('🎯 Setting up onResults callback...');
+                hands.onResults((results) => {
+                    console.log('👋 Hand detection results!', results.multiHandLandmarks?.length || 0, 'hands');
+                    
+                    ctx.save();
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                    
+                    if (results.multiHandLandmarks && results.multiHandedness) {
+                        results.multiHandLandmarks.forEach((landmarks, index) => {
+                            const handedness = results.multiHandedness[index];
+                            const isLeft = handedness.label === 'Right'; // Mirrored
+                            const color = isLeft ? '#00d4ff' : '#ff8a00';
+                            const deck = isLeft ? 'A' : 'B';
+                            
+                            console.log(`Hand ${index}: ${handedness.label} -> Deck ${deck}`);
+                            
+                            // Draw hand
+                            drawHand(ctx, landmarks, color, canvas);
+                            
+                            // Handle volume
+                            handleVolume(landmarks, deck, isLeft, volumeState);
+                            
+                            // Handle gestures
+                            handleGestures(landmarks, deck, isLeft, gestureState);
+                        });
+                    }
+                    
+                    ctx.restore();
+                });
+                
+                // Start processing frames
+                console.log('🎬 Starting frame processing...');
+                let processing = false;
+                const processFrame = async () => {
+                    if (!processing && video.readyState === 4) {
+                        processing = true;
+                        try {
+                            await hands.send({image: video});
+                        } catch (err) {
+                            console.error('Frame processing error:', err);
+                        }
+                        processing = false;
+                    }
+                    requestAnimationFrame(processFrame);
+                };
+                
+                processFrame();
+                console.log('✅ MediaPipe Hands initialized successfully!');
+                
+            } catch (err) {
+                console.error('❌ Error initializing MediaPipe:', err);
+            }
+        };
+        
+        // Helper functions
+        function drawHand(ctx, landmarks, color, canvas) {
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4],     // Thumb
+                [0, 5], [5, 6], [6, 7], [7, 8],     // Index
+                [0, 9], [9, 10], [10, 11], [11, 12], // Middle
+                [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+                [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+                [5, 9], [9, 13], [13, 17]           // Palm
+            ];
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            
+            connections.forEach(([start, end]) => {
+                const s = landmarks[start];
+                const e = landmarks[end];
+                ctx.beginPath();
+                ctx.moveTo(s.x * canvas.width, s.y * canvas.height);
+                ctx.lineTo(e.x * canvas.width, e.y * canvas.height);
+                ctx.stroke();
+            });
+            
+            ctx.shadowBlur = 0;
+            landmarks.forEach((landmark, idx) => {
+                const x = landmark.x * canvas.width;
+                const y = landmark.y * canvas.height;
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                if ([4, 8, 12, 16, 20].includes(idx)) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+            });
+        }
+        
+        function handleVolume(landmarks, deck, isLeft, state) {
+            const now = Date.now();
+            if (now - state.lastUpdate < state.updateInterval) return;
+            
+            const wristY = landmarks[0].y;
+            const volume = Math.round((1 - wristY) * 100);
+            
+            console.log(`🔊 ${deck} volume: ${volume}%`);
+            
+            if (window.updateDeckVolume) {
+                window.updateDeckVolume(deck, volume);
+            }
+            
+            const slider = document.getElementById(`volumeSlider${deck}`);
+            if (slider) slider.value = volume;
+            
+            state.lastUpdate = now;
+        }
+        
+        function handleGestures(landmarks, deck, isLeft, state) {
+            const fingerCount = countFingers(landmarks);
+            const now = Date.now();
+            
+            if (now - state.lastGesture < state.debounce) return;
+            
+            const lastCount = isLeft ? state.lastLeftFingers : state.lastRightFingers;
+            
+            if (fingerCount !== lastCount && fingerCount >= 1 && fingerCount <= 3) {
+                const channels = {1: 'bass', 2: 'drums', 3: 'synth'};
+                const channel = channels[fingerCount];
+                
+                console.log(`🎛️ ${fingerCount} fingers -> ${channel} on Deck ${deck}`);
+                
+                if (channel && window.toggleAudioChannel) {
+                    window.toggleAudioChannel(deck, channel);
+                    state.lastGesture = now;
+                }
+            }
+            
+            if (isLeft) state.lastLeftFingers = fingerCount;
+            else state.lastRightFingers = fingerCount;
+        }
+        
+        function countFingers(landmarks) {
+            let count = 0;
+            
+            // Thumb
+            const thumbTip = landmarks[4];
+            const wrist = landmarks[0];
+            const thumbDist = Math.sqrt(
+                Math.pow(thumbTip.x - wrist.x, 2) + 
+                Math.pow(thumbTip.y - wrist.y, 2)
+            );
+            if (thumbDist > 0.15) count++;
+            
+            // Other fingers
+            const tips = [8, 12, 16, 20];
+            const pips = [6, 10, 14, 18];
+            
+            for (let i = 0; i < 4; i++) {
+                if (landmarks[tips[i]].y < landmarks[pips[i]].y - 0.03) {
+                    count++;
+                }
+            }
+            
+            return count;
+        }
+        
+        // Debug MediaPipe function
+        window.debugMediaPipe = function() {
+            console.log('=== MEDIAPIPE DEBUG ===');
+            console.log('Hands class:', typeof Hands, window.Hands);
+            console.log('Camera class:', typeof Camera, window.Camera);
+            console.log('handTracker:', window.handTracker);
+            console.log('mediaPipeCamera:', window.mediaPipeCamera);
+            
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            console.log('Video:', video);
+            console.log('Video ready state:', video?.readyState);
+            console.log('Video dimensions:', video?.videoWidth, 'x', video?.videoHeight);
+            console.log('Canvas:', canvas);
+            console.log('Canvas dimensions:', canvas?.width, 'x', canvas?.height);
+            
+            // Try to manually initialize if not done
+            if (!window.handTracker && window.initializeMediaPipeHands) {
+                console.log('🔄 Manually initializing MediaPipe...');
+                window.initializeMediaPipeHands();
+            }
+        };
+        
+        // Super simple play both decks function
+        function playBothDecksSimple() {
+            console.log('=== PLAY BOTH DECKS SIMPLE ===');
+            
+            // Just call the main playBothDecks function
+            if (window.playBothDecks) {
+                window.playBothDecks();
+            } else {
+                console.error('playBothDecks function not found!');
+            }
+        }
+        
+        // Make it global
+        window.playBothDecksSimple = playBothDecksSimple;
+        
+        // Add enter key support for search
+        function setupSearchKeyHandler() {
+            const searchInput = document.getElementById('trackSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        window.searchTracks();
+                    }
+                });
+            }
+        }
+        
+        // Add keyboard shortcuts for channel control
+        function setupChannelKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                // Ignore if typing in an input field
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                // Check if toggleAudioChannel function exists
+                if (!window.toggleAudioChannel) {
+                    return;
+                }
+                
+                switch(e.key) {
+                    case '1':
+                        e.preventDefault();
+                        window.toggleAudioChannel('A', 'bass');
+                        console.log('🎹 Key 1: Toggle Bass for Deck A');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        window.toggleAudioChannel('A', 'drums');
+                        console.log('🎹 Key 2: Toggle Drums for Deck A');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        window.toggleAudioChannel('A', 'synth');
+                        console.log('🎹 Key 3: Toggle Synth for Deck A');
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        window.toggleAudioChannel('B', 'bass');
+                        console.log('🎹 Key 4: Toggle Bass for Deck B');
+                        break;
+                    case '5':
+                        e.preventDefault();
+                        window.toggleAudioChannel('B', 'drums');
+                        console.log('🎹 Key 5: Toggle Drums for Deck B');
+                        break;
+                    case '6':
+                        e.preventDefault();
+                        window.toggleAudioChannel('B', 'synth');
+                        console.log('🎹 Key 6: Toggle Synth for Deck B');
+                        break;
+                }
+            });
+            
+            console.log('🎹 Channel keyboard shortcuts initialized:');
+            console.log('  Keys 1,2,3 = Bass,Drums,Synth for Deck A');
+            console.log('  Keys 4,5,6 = Bass,Drums,Synth for Deck B');
+        }
+        
         // Start when DOM is ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeApp);
+            document.addEventListener('DOMContentLoaded', function() {
+                initializeApp();
+                setupSearchKeyHandler();
+                setupChannelKeyboardShortcuts();
+            });
         } else {
             initializeApp();
+            setupSearchKeyHandler();
+            setupChannelKeyboardShortcuts();
         }
         
         // Check for pending track load

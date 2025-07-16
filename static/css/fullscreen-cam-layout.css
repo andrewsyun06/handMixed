@@ -68,7 +68,7 @@ body {
 .logo-title {
     font-size: 1.5rem;
     font-weight: 900;
-    background: linear-gradient(45deg, #00d4ff, #ff0080);
+    background: linear-gradient(45deg, #00d4ff, #ff8a00);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: 2px;
@@ -308,22 +308,42 @@ body {
     box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
-.channel-icon {
-    width: 30px;
-    height: 30px;
+.channel-led {
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background: #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    font-weight: bold;
+    background: #ff0000;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3),
+                0 0 8px rgba(255, 0, 0, 0.5);
     transition: all 0.3s;
+    position: relative;
 }
 
-.channel-btn.active .channel-icon {
-    background: #00ff88;
-    color: #000;
+.channel-led::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.channel-btn.active .channel-led {
+    background: #00ff00;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3),
+                0 0 12px rgba(0, 255, 0, 0.8),
+                0 0 20px rgba(0, 255, 0, 0.4);
+}
+
+.channel-btn:not(.active) .channel-led {
+    background: #333;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.channel-btn:not(.active) .channel-led::before {
+    display: none;
 }
 
 .channel-label {
@@ -389,18 +409,33 @@ body {
 .waveform-seek-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 3px;
-    height: 80px;
-    background: #fff;
+    width: 0;
+    height: 0;
+    background: transparent;
     cursor: pointer;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    border-radius: 2px;
+    box-shadow: none;
+    border: none;
 }
 
 .waveform-seek-slider::-webkit-slider-track {
     background: transparent;
     height: 80px;
     border-radius: 12px;
+}
+
+.waveform-seek-slider::-moz-range-track {
+    background: transparent;
+    height: 80px;
+    border-radius: 12px;
+}
+
+.waveform-seek-slider::-webkit-slider-thumb:before,
+.waveform-seek-slider::-webkit-slider-thumb:after {
+    display: none;
+}
+
+.waveform-seek-slider:focus {
+    outline: none;
 }
 
 .track-time-info {
@@ -464,12 +499,24 @@ body {
 /* Volume Control */
 .volume-section {
     margin-bottom: 20px;
+    position: relative;
 }
 
 .volume-label {
     font-size: 0.9rem;
     margin-bottom: 8px;
     color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s;
+}
+
+/* Hand control active indicator */
+.volume-section.hand-controlled .volume-label {
+    color: #00ff88;
+}
+
+.volume-section.hand-controlled .volume-label::after {
+    content: ' 🖐️';
+    animation: pulse 1s ease-in-out infinite;
 }
 
 .volume-slider {
@@ -854,7 +901,102 @@ body {
 .track-search {
     display: flex;
     gap: 10px;
+    margin-bottom: 15px;
+}
+
+.genre-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 20px;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.genre-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.genre-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.genre-btn.active {
+    background: #00d4ff;
+    border-color: #00d4ff;
+    color: #000;
+}
+
+.modal-content.deck-b .genre-btn.active {
+    background: #ff8a00;
+    border-color: #ff8a00;
+}
+
+.bpm-filter-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+
+.bpm-filter-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+#bpmRangeDisplay {
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+.modal-content.deck-b #bpmRangeDisplay {
+    color: #ff8a00;
+}
+
+.bpm-slider {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+    margin: 10px 0;
+}
+
+.bpm-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.modal-content.deck-b .bpm-slider::-webkit-slider-thumb {
+    background: #ff8a00;
+    box-shadow: 0 0 10px rgba(255, 138, 0, 0.5);
+}
+
+.bpm-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 5px;
 }
 
 .track-search input {
@@ -915,8 +1057,18 @@ body {
 .track-meta {
     display: flex;
     gap: 15px;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
+    margin-top: 5px;
+    font-size: 0.8rem;
+}
+
+.track-bpm {
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+.track-genre {
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: capitalize;
 }
 
 .loading, .error, .empty {
@@ -925,8 +1077,215 @@ body {
     color: rgba(255, 255, 255, 0.6);
 }
 
+/* Vinyl Record Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 100px;
+    height: 100px;
+    margin: 20px auto;
+    position: relative;
+}
+
+.vinyl-record {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    position: relative;
+    animation: spin 2s linear infinite, colorSwitch 3s ease-in-out infinite;
+    background: radial-gradient(circle at center, 
+        #000 0%, 
+        #111 10%, 
+        #222 15%, 
+        #333 20%, 
+        #00d4ff 25%);
+    box-shadow: 
+        0 0 30px rgba(0, 212, 255, 0.5),
+        inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Multiple groove rings */
+.vinyl-record::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 95%;
+    height: 95%;
+    border-radius: 50%;
+    background: repeating-radial-gradient(
+        circle at center,
+        transparent 0px,
+        transparent 2px,
+        rgba(255, 255, 255, 0.05) 2px,
+        rgba(255, 255, 255, 0.05) 3px,
+        transparent 3px,
+        transparent 5px,
+        rgba(255, 255, 255, 0.08) 5px,
+        rgba(255, 255, 255, 0.08) 6px,
+        transparent 6px,
+        transparent 8px,
+        rgba(255, 255, 255, 0.06) 8px,
+        rgba(255, 255, 255, 0.06) 9px,
+        transparent 9px,
+        transparent 11px,
+        rgba(255, 255, 255, 0.04) 11px,
+        rgba(255, 255, 255, 0.04) 12px
+    );
+    box-shadow: 
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 0 10px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 20px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 30px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 40px rgba(0, 0, 0, 0.03);
+}
+
+/* Center spindle hole */
+.vinyl-record::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #000;
+    box-shadow: 
+        0 0 0 2px #333,
+        0 0 0 4px #222,
+        0 0 10px rgba(0, 0, 0, 0.8);
+    z-index: 3;
+}
+
+/* Record label */
+.record-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center,
+        #fff 0%,
+        #f0f0f0 50%,
+        #ddd 100%);
+    box-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Label text */
+.record-label::before {
+    content: 'DJ';
+    letter-spacing: 1px;
+    opacity: 0.7;
+}
+
+/* Tonearm/Stylus */
+.tonearm-dot {
+    position: absolute;
+    top: 20%;
+    right: 10%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center,
+        #fff 0%,
+        #ccc 40%,
+        #999 100%);
+    box-shadow: 
+        0 0 15px rgba(255, 255, 255, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.4);
+    animation: pulse 1s ease-in-out infinite;
+    z-index: 4;
+}
+
+/* Tonearm line */
+.tonearm-dot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(to right, 
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        rgba(255, 255, 255, 0.6) 100%);
+    transform: translateY(-50%) rotate(-30deg);
+    transform-origin: right center;
+}
+
+/* Animations */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes colorSwitch {
+    0%, 100% { 
+        background: radial-gradient(circle at center, 
+            #000 0%, 
+            #111 10%, 
+            #222 15%, 
+            #333 20%, 
+            #00d4ff 25%);
+        box-shadow: 
+            0 0 30px rgba(0, 212, 255, 0.5),
+            inset 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    50% { 
+        background: radial-gradient(circle at center, 
+            #000 0%, 
+            #111 10%, 
+            #222 15%, 
+            #333 20%, 
+            #ff8a00 25%);
+        box-shadow: 
+            0 0 30px rgba(255, 138, 0, 0.5),
+            inset 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+.loading-text {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
 .error {
     color: #ff0080;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.error:hover {
+    color: #ff00aa;
+    transform: scale(1.05);
+}
+
+.track-list.error-state {
+    opacity: 0.8;
 }
 
 /* Camera Placeholder */

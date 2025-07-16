@@ -194,12 +194,7 @@ function drawStaticWaveform(deckLetter) {
         ctx.fillRect(x, centerY - barHeight / 2, barWidth - 0.5, barHeight);
     }
     
-    // Draw center line
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.beginPath();
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(width, centerY);
-    ctx.stroke();
+    // Removed center line for cleaner look
 }
 
 // Update progress overlay

@@ -12,4 +12,5 @@ urlpatterns = [
     # Audius API endpoints
     path('api/audius/trending/', views.get_trending_tracks, name='api_trending_tracks'),
     path('api/audius/search/', views.search_tracks, name='api_search_tracks'),
+    path('api/audius/genre-playlists/', views.get_genre_playlists, name='api_genre_playlists'),
 ]

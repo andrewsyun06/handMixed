@@ -122,13 +122,22 @@ def get_trending_tracks(request):
             logger.info(f"📊 Sample track data keys: {list(tracks[0].keys())}")
             logger.info(f"📊 Sample track data: {json.dumps(tracks[0], indent=2)[:500]}...")
         
+        # Get filter parameters
+        bpm_filter = request.GET.get('bpm_filter', 'false').lower() == 'true'
+        target_bpm = int(request.GET.get('target_bpm', 120))
+        bpm_tolerance = int(request.GET.get('bpm_tolerance', 5))
+        genre_filter = request.GET.get('genre_filter', 'all').lower()
+        
         processed_tracks = []
+        dj_genres = ['electronic', 'house', 'techno', 'dance', 'edm', 'progressive', 'trance', 'deep house', 'tech house']
+        
         for track in tracks:
             if not track or not track.get('id'):
                 continue
             
             # Extract BPM from track metadata
             bpm = extract_bpm_from_track(track)
+            genre = track.get('genre', '').lower()
             
             # Log BPM extraction for debugging
             if bpm:
@@ -136,7 +145,6 @@ def get_trending_tracks(request):
             else:
                 logger.warning(f"⚠️ No BPM found for track: {track.get('title')}")
                 # Set a reasonable default based on genre
-                genre = track.get('genre', '').lower()
                 if 'house' in genre or 'techno' in genre:
                     bpm = 128
                 elif 'hip hop' in genre or 'rap' in genre:
@@ -149,6 +157,40 @@ def get_trending_tracks(request):
                     bpm = 120  # Default BPM
                 
                 logger.info(f"🎯 Using default BPM {bpm} based on genre: {genre}")
+            
+            # Filter by BPM if requested
+            if bpm_filter:
+                # Check if BPM is within tolerance of target
+                if not (target_bpm - bpm_tolerance <= bpm <= target_bpm + bpm_tolerance):
+                    continue
+            
+            # Filter by genre if specified
+            if genre_filter != 'all':
+                # Apply genre-specific filtering
+                if genre_filter == 'dj':
+                    # DJ filter includes multiple electronic genres
+                    is_dj_friendly = any(dj_genre in genre for dj_genre in dj_genres)
+                    if not is_dj_friendly and 'remix' not in track.get('title', '').lower():
+                        continue
+                elif genre_filter == 'house':
+                    if 'house' not in genre:
+                        continue
+                elif genre_filter == 'dubstep':
+                    if 'dubstep' not in genre and 'dub' not in genre:
+                        continue
+                elif genre_filter == 'trap':
+                    if 'trap' not in genre:
+                        continue
+                elif genre_filter == 'drum & bass':
+                    if not any(term in genre for term in ['drum', 'bass', 'dnb', 'd&b']):
+                        continue
+                elif genre_filter == 'edm':
+                    if not any(term in genre for term in ['edm', 'electronic', 'dance']):
+                        continue
+                else:
+                    # Generic genre filter
+                    if genre_filter not in genre:
+                        continue
                 
             processed_track = {
                 'id': track['id'],
@@ -182,6 +224,116 @@ def get_trending_tracks(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+def get_genre_playlists(request):
+    """Get playlists by genre and extract tracks"""
+    try:
+        genre = request.GET.get('genre', 'electronic').lower()
+        limit = min(int(request.GET.get('limit', 10)), 20)
+        
+        # Genre to search query mapping
+        genre_queries = {
+            'house': 'house music',
+            'dubstep': 'dubstep',
+            'trap': 'trap music',
+            'drum & bass': 'drum and bass',
+            'edm': 'EDM',
+            'techno': 'techno',
+            'trance': 'trance music',
+            'dj': 'DJ mix'
+        }
+        
+        search_query = genre_queries.get(genre, genre)
+        
+        # Search for playlists by genre
+        url = f"{AUDIUS_API_BASE}/v1/playlists/search"
+        params = {'query': search_query, 'limit': limit}
+        
+        logger.info(f"🎵 Searching playlists for genre: {genre} with query: {search_query}")
+        
+        response = requests.get(url, params=params, timeout=15)
+        
+        if response.status_code != 200:
+            logger.error(f"Playlist search error: {response.status_code}")
+            return JsonResponse({'error': f'Playlist search error: {response.status_code}'}, status=500)
+        
+        playlists = response.json().get('data', [])
+        
+        # Collect all tracks from playlists
+        all_tracks = []
+        track_ids = set()  # Avoid duplicates
+        
+        for playlist in playlists[:5]:  # Limit to first 5 playlists
+            playlist_id = playlist.get('id')
+            if not playlist_id:
+                continue
+                
+            # Get playlist tracks
+            track_url = f"{AUDIUS_API_BASE}/v1/playlists/{playlist_id}/tracks"
+            track_response = requests.get(track_url, timeout=15)
+            
+            if track_response.status_code == 200:
+                tracks = track_response.json().get('data', [])
+                
+                for track in tracks:
+                    if track and track.get('id') and track['id'] not in track_ids:
+                        track_ids.add(track['id'])
+                        
+                        # Extract BPM
+                        bpm = extract_bpm_from_track(track)
+                        if not bpm:
+                            # Estimate based on genre
+                            if 'house' in genre or 'techno' in genre:
+                                bpm = 128
+                            elif 'trap' in genre:
+                                bpm = 140
+                            elif 'drum' in genre:
+                                bpm = 174
+                            elif 'dubstep' in genre:
+                                bpm = 140
+                            else:
+                                bpm = 120
+                        
+                        processed_track = {
+                            'id': track['id'],
+                            'title': track.get('title', 'Unknown Title'),
+                            'artist': track.get('user', {}).get('name', 'Unknown Artist'),
+                            'duration': track.get('duration', 0),
+                            'artwork': None,
+                            'genre': track.get('genre', genre),
+                            'bpm': bpm,
+                            'stream_url': f"{AUDIUS_API_BASE}/v1/tracks/{track['id']}/stream"
+                        }
+                        
+                        # Handle artwork
+                        artwork = track.get('artwork')
+                        if artwork and isinstance(artwork, dict):
+                            processed_track['artwork'] = artwork.get('480x480') or artwork.get('150x150')
+                        
+                        all_tracks.append(processed_track)
+        
+        # Get BPM filter parameters
+        bpm_filter = request.GET.get('bpm_filter', 'false').lower() == 'true'
+        target_bpm = int(request.GET.get('target_bpm', 120))
+        bpm_tolerance = int(request.GET.get('bpm_tolerance', 5))
+        
+        # Filter by BPM if requested
+        if bpm_filter:
+            all_tracks = [t for t in all_tracks if target_bpm - bpm_tolerance <= t['bpm'] <= target_bpm + bpm_tolerance]
+        
+        logger.info(f"✅ Found {len(all_tracks)} tracks from {genre} playlists")
+        
+        return JsonResponse({
+            'tracks': all_tracks,
+            'genre': genre,
+            'total': len(all_tracks)
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching genre playlists: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
 def search_tracks(request):
     """Search tracks on Audius with BPM data"""
     try:
@@ -211,13 +363,22 @@ def search_tracks(request):
         if tracks:
             logger.info(f"📊 Sample search result keys: {list(tracks[0].keys())}")
         
+        # Get filter parameters
+        bpm_filter = request.GET.get('bpm_filter', 'false').lower() == 'true'
+        target_bpm = int(request.GET.get('target_bpm', 120))
+        bpm_tolerance = int(request.GET.get('bpm_tolerance', 5))
+        genre_filter = request.GET.get('genre_filter', 'all').lower()
+        
         processed_tracks = []
+        dj_genres = ['electronic', 'house', 'techno', 'dance', 'edm', 'progressive', 'trance', 'deep house', 'tech house']
+        
         for track in tracks:
             if not track or not track.get('id'):
                 continue
             
             # Extract BPM from track metadata
             bpm = extract_bpm_from_track(track)
+            genre = track.get('genre', '').lower()
             
             # Log BPM extraction for debugging
             if bpm:
@@ -225,7 +386,6 @@ def search_tracks(request):
             else:
                 logger.warning(f"⚠️ No BPM found for search result: {track.get('title')}")
                 # Set a reasonable default based on genre
-                genre = track.get('genre', '').lower()
                 if 'house' in genre or 'techno' in genre:
                     bpm = 128
                 elif 'hip hop' in genre or 'rap' in genre:
@@ -238,6 +398,40 @@ def search_tracks(request):
                     bpm = 120  # Default BPM
                 
                 logger.info(f"🎯 Using default BPM {bpm} based on genre: {genre}")
+                
+            # Filter by BPM if requested
+            if bpm_filter:
+                # Check if BPM is within tolerance of target
+                if not (target_bpm - bpm_tolerance <= bpm <= target_bpm + bpm_tolerance):
+                    continue
+            
+            # Filter by genre if specified
+            if genre_filter != 'all':
+                # Apply genre-specific filtering
+                if genre_filter == 'dj':
+                    # DJ filter includes multiple electronic genres
+                    is_dj_friendly = any(dj_genre in genre for dj_genre in dj_genres)
+                    if not is_dj_friendly and 'remix' not in track.get('title', '').lower():
+                        continue
+                elif genre_filter == 'house':
+                    if 'house' not in genre:
+                        continue
+                elif genre_filter == 'dubstep':
+                    if 'dubstep' not in genre and 'dub' not in genre:
+                        continue
+                elif genre_filter == 'trap':
+                    if 'trap' not in genre:
+                        continue
+                elif genre_filter == 'drum & bass':
+                    if not any(term in genre for term in ['drum', 'bass', 'dnb', 'd&b']):
+                        continue
+                elif genre_filter == 'edm':
+                    if not any(term in genre for term in ['edm', 'electronic', 'dance']):
+                        continue
+                else:
+                    # Generic genre filter
+                    if genre_filter not in genre:
+                        continue
                 
             processed_track = {
                 'id': track['id'],

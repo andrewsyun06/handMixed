@@ -10,7 +10,8 @@ const simpleDeckData = {
         isPlaying: false,
         waveform: null,
         analyser: null,
-        audioSourceConnected: false
+        audioSourceConnected: false,
+        volume: 0.5  // Default 50% volume
     },
     B: {
         track: null,
@@ -18,16 +19,20 @@ const simpleDeckData = {
         isPlaying: false,
         waveform: null,
         analyser: null,
-        audioSourceConnected: false
+        audioSourceConnected: false,
+        volume: 0.5  // Default 50% volume
     }
 };
 
 // Load track to specific deck
 window.loadTrackToSpecificDeck = async function(track, deckLetter) {
     console.log(`🎵 Loading track "${track.title}" to Deck ${deckLetter}`);
+    console.log('Track object:', track);
+    console.log('Current simpleDeckData:', window.simpleDeckData);
     
     try {
-        const deck = simpleDeckData[deckLetter];
+        const deck = window.simpleDeckData[deckLetter];
+        console.log(`Deck ${deckLetter} before loading:`, deck);
         
         // Stop current track if playing
         if (deck.isPlaying && deck.audio) {
@@ -41,6 +46,7 @@ window.loadTrackToSpecificDeck = async function(track, deckLetter) {
             deck.audio.removeEventListener('loadedmetadata', deck._metadataListener);
             deck.audio.removeEventListener('error', deck._errorListener);
             deck.audio.removeEventListener('timeupdate', deck._timeupdateListener);
+            deck.audio.removeEventListener('ended', deck._endedListener);
             
             // Reset source node reference
             deck.audio._sourceNode = null;
@@ -48,6 +54,12 @@ window.loadTrackToSpecificDeck = async function(track, deckLetter) {
             // Clear the audio element
             deck.audio.src = '';
             deck.audio = null;
+        }
+        
+        // Reset BPM display
+        const bpmElement = document.querySelector(`.deck-overlay-panel.${deckLetter === 'A' ? 'left' : 'right'} .bpm-display`);
+        if (bpmElement) {
+            bpmElement.textContent = '-- BPM';
         }
         
         // Reset audio source connection flag
@@ -67,7 +79,7 @@ window.loadTrackToSpecificDeck = async function(track, deckLetter) {
         }
         
         deck.audio.src = audioUrl;
-        deck.audio.volume = 0.7;
+        deck.audio.volume = deck.volume || 0.5;  // Use stored volume or default 50%
         
         // Update visual display immediately
         updateDeckVisuals(deckLetter, track);
@@ -99,15 +111,27 @@ window.loadTrackToSpecificDeck = async function(track, deckLetter) {
             updateWaveformProgress(deckLetter);
         };
         
+        deck._endedListener = () => {
+            console.log(`🎵 Track ended for Deck ${deckLetter}`);
+            deck.isPlaying = false;
+            updatePlayButton(deckLetter, false);
+        };
+        
         // Add event listeners
         deck.audio.addEventListener('loadedmetadata', deck._metadataListener);
         deck.audio.addEventListener('error', deck._errorListener);
         deck.audio.addEventListener('timeupdate', deck._timeupdateListener);
+        deck.audio.addEventListener('ended', deck._endedListener);
         
         // Load the audio
         deck.audio.load();
         
         showNotification(`Track loaded to Deck ${deckLetter}`, 'success');
+        
+        // Verify the deck was updated
+        console.log(`✅ Deck ${deckLetter} after loading:`, window.simpleDeckData[deckLetter]);
+        console.log(`Audio element created:`, window.simpleDeckData[deckLetter].audio);
+        console.log(`Track stored:`, window.simpleDeckData[deckLetter].track);
         
     } catch (error) {
         console.error(`❌ Error loading track to Deck ${deckLetter}:`, error);
@@ -157,6 +181,9 @@ function updateDeckVisuals(deckLetter, track) {
             </div>
         </div>
     `;
+    
+    // Update BPM display
+    updateBPMDisplay(deckLetter, track);
     
     console.log(`✅ Visuals updated for Deck ${deckLetter}`);
 }
@@ -280,6 +307,9 @@ function updateWaveformProgress(deckLetter) {
     const progressBar = document.getElementById(`waveformProgress${deckLetter}`);
     if (progressBar) {
         progressBar.style.width = `${progress}%`;
+        // Ensure it's visible
+        progressBar.style.opacity = '1';
+        progressBar.style.display = 'block';
     }
     
     // Update seek slider
@@ -291,9 +321,14 @@ function updateWaveformProgress(deckLetter) {
 
 // Play/Stop deck
 window.toggleDeckPlayback = function(deckLetter) {
-    const deck = simpleDeckData[deckLetter];
+    console.log(`🎵 toggleDeckPlayback called for Deck ${deckLetter}`);
+    console.log('SimpleDeckData:', window.simpleDeckData);
     
-    if (!deck.audio) {
+    const deck = window.simpleDeckData?.[deckLetter];
+    console.log(`Deck ${deckLetter} data:`, deck);
+    
+    if (!deck || !deck.audio) {
+        console.error(`No track/audio in Deck ${deckLetter}:`, { deck, hasAudio: deck?.audio });
         showNotification(`No track loaded in Deck ${deckLetter}`, 'warning');
         return;
     }
@@ -363,6 +398,66 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Update BPM display
+function updateBPMDisplay(deckLetter, track) {
+    const bpmElement = document.querySelector(`.deck-overlay-panel.${deckLetter === 'A' ? 'left' : 'right'} .bpm-display`);
+    if (!bpmElement) return;
+    
+    // Debug log to see what we're getting
+    console.log(`🎵 BPM Debug for Deck ${deckLetter}:`, {
+        track_bpm: track.bpm,
+        track_metadata_bpm: track.metadata?.bpm,
+        track_tempo: track.tempo,
+        full_track: track
+    });
+    
+    // Check if track has BPM metadata
+    let bpm = null;
+    
+    // Try to get BPM from track metadata
+    if (track.bpm) {
+        bpm = track.bpm;
+    } else if (track.metadata?.bpm) {
+        bpm = track.metadata.bpm;
+    } else if (track.tempo) {
+        bpm = track.tempo;
+    }
+    
+    if (bpm) {
+        bpmElement.textContent = `${Math.round(bpm)} BPM`;
+        console.log(`✅ BPM set to ${bpm} for Deck ${deckLetter}`);
+    } else {
+        // If no BPM in metadata, estimate it (placeholder for now)
+        bpmElement.textContent = 'DETECTING...';
+        
+        // Simple BPM estimation based on genre or default
+        setTimeout(() => {
+            const estimatedBPM = estimateBPMFromTrack(track);
+            bpmElement.textContent = `~${estimatedBPM} BPM`;
+        }, 1000);
+    }
+}
+
+// Estimate BPM based on track info (simple heuristic)
+function estimateBPMFromTrack(track) {
+    // This is a simple estimation based on common EDM BPMs
+    // In a real app, you'd use audio analysis
+    const title = (track.title || '').toLowerCase();
+    const genre = (track.genre || '').toLowerCase();
+    
+    // Common BPM ranges for electronic music genres
+    if (genre.includes('house') || title.includes('house')) return 128;
+    if (genre.includes('techno') || title.includes('techno')) return 130;
+    if (genre.includes('trance') || title.includes('trance')) return 138;
+    if (genre.includes('dubstep') || title.includes('dubstep')) return 140;
+    if (genre.includes('drum') || genre.includes('bass')) return 174;
+    if (genre.includes('trap') || title.includes('trap')) return 140;
+    if (genre.includes('future') || title.includes('future')) return 150;
+    
+    // Default to 128 BPM (common house tempo)
+    return 128;
+}
+
 // Start main waveform animation
 function startMainWaveformAnimation(deckLetter) {
     const deck = simpleDeckData[deckLetter];
@@ -424,12 +519,7 @@ function startMainWaveformAnimation(deckLetter) {
         ctx.lineTo(width, height / 2);
         ctx.stroke();
         
-        // Draw center line
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
-        ctx.stroke();
+        // Removed center line for cleaner look
         
         animationId = requestAnimationFrame(animate);
     }
@@ -446,34 +536,75 @@ function showNotification(message, type = 'info') {
     // You can implement a visual notification here
 }
 
-// Play both decks simultaneously - simplified version
+// Play both decks simultaneously - super simple version
 window.playBothDecks = function() {
-    console.log('🎵 Playing both decks...');
+    console.log('🎵 PLAY BOTH DECKS clicked');
     
-    const deckA = simpleDeckData.A;
-    const deckB = simpleDeckData.B;
+    // Debug log to check deck data
+    console.log('SimpleDeckData:', window.simpleDeckData);
+    console.log('Deck A data:', window.simpleDeckData?.A);
+    console.log('Deck B data:', window.simpleDeckData?.B);
     
-    // Check if tracks are loaded
-    if (!deckA.track || !deckB.track) {
-        if (!deckA.track && !deckB.track) {
-            showNotification('No tracks loaded in either deck', 'warning');
-        } else if (!deckA.track) {
-            showNotification('No track loaded in Deck A', 'warning');
-        } else if (!deckB.track) {
-            showNotification('No track loaded in Deck B', 'warning');
-        }
+    // Simply trigger both deck play buttons
+    const deckA = window.simpleDeckData?.A;
+    const deckB = window.simpleDeckData?.B;
+    
+    // Check if we have tracks loaded
+    const hasTrackA = deckA && deckA.track && deckA.audio;
+    const hasTrackB = deckB && deckB.track && deckB.audio;
+    
+    console.log('Has track A:', hasTrackA, 'Audio element:', deckA?.audio);
+    console.log('Has track B:', hasTrackB, 'Audio element:', deckB?.audio);
+    
+    if (!hasTrackA && !hasTrackB) {
+        console.log('No tracks loaded in either deck');
+        alert('Please load tracks in both decks first');
         return;
     }
     
-    // Play both decks if they're stopped
-    if (!deckA.isPlaying) {
-        toggleDeckPlayback('A');
-    }
-    if (!deckB.isPlaying) {
-        toggleDeckPlayback('B');
+    if (!hasTrackA) {
+        console.log('No track in Deck A');
+        alert('Please load a track in Deck A first');
+        return;
     }
     
-    console.log('✅ Started playback for both decks');
+    if (!hasTrackB) {
+        console.log('No track in Deck B');
+        alert('Please load a track in Deck B first');
+        return;
+    }
+    
+    // If both decks have tracks, play them both
+    console.log('Both decks have tracks, starting playback...');
+    
+    // Resume audio context if needed
+    if (window.audioContext && window.audioContext.state === 'suspended') {
+        console.log('Resuming audio context...');
+        window.audioContext.resume();
+    }
+    
+    // Start both decks
+    if (!deckA.isPlaying) {
+        console.log('Starting Deck A...');
+        deckA.audio.play().then(() => {
+            deckA.isPlaying = true;
+            updatePlayButton('A', true);
+            console.log('✅ Deck A playing');
+        }).catch(err => {
+            console.error('Error playing Deck A:', err);
+        });
+    }
+    
+    if (!deckB.isPlaying) {
+        console.log('Starting Deck B...');
+        deckB.audio.play().then(() => {
+            deckB.isPlaying = true;
+            updatePlayButton('B', true);
+            console.log('✅ Deck B playing');
+        }).catch(err => {
+            console.error('Error playing Deck B:', err);
+        });
+    }
 };
 
 // Stop both decks
@@ -494,8 +625,58 @@ window.stopBothDecks = function() {
     console.log('✅ Stopped playback for both decks');
 };
 
+// Update deck volume
+window.updateDeckVolume = function(deckLetter, value) {
+    const deck = simpleDeckData[deckLetter];
+    const volume = value / 100;  // Convert percentage to 0-1 range
+    
+    console.log(`🔊 Updating Deck ${deckLetter} volume to ${value}%`);
+    
+    // Store the volume
+    deck.volume = volume;
+    
+    // Update audio element if it exists
+    if (deck.audio) {
+        deck.audio.volume = volume;
+    }
+    
+    // Update volume label
+    const volumeLabel = document.getElementById(`volumeLabel${deckLetter}`);
+    if (volumeLabel) {
+        volumeLabel.textContent = value;
+    }
+};
+
+// Handle seek with proper ended state handling
+window.handleSeek = function(deckLetter, value) {
+    const deck = simpleDeckData[deckLetter];
+    if (!deck || !deck.audio || !deck.audio.duration) return;
+    
+    const wasPlayingBeforeSeek = deck.isPlaying;
+    const seekTime = (value / 100) * deck.audio.duration;
+    
+    console.log(`🎯 Seeking Deck ${deckLetter} to ${seekTime.toFixed(2)}s (${value}%)`);
+    
+    // Set the new time
+    deck.audio.currentTime = seekTime;
+    
+    // If the track had ended and was playing before, resume playback
+    if (deck.audio.ended && wasPlayingBeforeSeek) {
+        console.log(`🔄 Track had ended, resuming playback for Deck ${deckLetter}`);
+        deck.audio.play().then(() => {
+            deck.isPlaying = true;
+            updatePlayButton(deckLetter, true);
+        }).catch(err => {
+            console.error(`Error resuming playback for Deck ${deckLetter}:`, err);
+        });
+    }
+};
+
 // Export for global use
 window.simpleDeckData = simpleDeckData;
+
+// Override deckPlayers to use our data
+window.deckPlayers = window.simpleDeckData;
 
 // Debug main waveform
 window.debugMainWaveform = function(deckLetter) {
@@ -541,4 +722,55 @@ window.forceMainWaveform = function(deckLetter) {
     }
 };
 
+// Debug function to check deck states
+window.debugDeckStates = function() {
+    console.log('=== DECK STATES DEBUG ===');
+    console.log('Window simpleDeckData:', window.simpleDeckData);
+    console.log('Deck A:', {
+        hasTrack: !!window.simpleDeckData?.A?.track,
+        hasAudio: !!window.simpleDeckData?.A?.audio,
+        trackTitle: window.simpleDeckData?.A?.track?.title,
+        audioSrc: window.simpleDeckData?.A?.audio?.src
+    });
+    console.log('Deck B:', {
+        hasTrack: !!window.simpleDeckData?.B?.track,
+        hasAudio: !!window.simpleDeckData?.B?.audio,
+        trackTitle: window.simpleDeckData?.B?.track?.title,
+        audioSrc: window.simpleDeckData?.B?.audio?.src
+    });
+};
+
+// Force fix function to ensure our system is used
+window.fixDeckSystem = function() {
+    console.log('🔧 Forcing simple deck system...');
+    window.deckPlayers = window.simpleDeckData;
+    
+    // Override any conflicting functions
+    if (window.loadTrackToDeck && window.loadTrackToDeck !== window.loadTrackToSpecificDeck) {
+        console.log('⚠️ Overriding conflicting loadTrackToDeck function');
+        window.loadTrackToDeck = function(track, deckLetter) {
+            window.loadTrackToSpecificDeck(track, deckLetter);
+        };
+    }
+    
+    console.log('✅ Deck system fixed');
+};
+
+// Auto-fix on load
+setTimeout(() => {
+    window.fixDeckSystem();
+    
+    // Initialize volume sliders to match default volume
+    ['A', 'B'].forEach(deckLetter => {
+        const slider = document.getElementById(`volumeSlider${deckLetter}`);
+        const label = document.getElementById(`volumeLabel${deckLetter}`);
+        if (slider && label) {
+            slider.value = 50;  // Set to 50%
+            label.textContent = '50';
+        }
+    });
+}, 1000);
+
 console.log('✅ Simple Deck Loader ready');
+console.log('🔍 To debug deck states, run: debugDeckStates()');
+console.log('🔧 To force fix deck system, run: fixDeckSystem()');
