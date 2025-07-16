@@ -429,37 +429,7 @@ function stopDeck(deckLetter) {
     }
 }
 
-// Update deck volume based on hand control and channel settings
-function updateDeckVolume(deckLetter) {
-    const deck = deckState[deckLetter];
-    
-    if (!deck.audio && !deck.multiChannelPlayer) return;
-    
-    let finalVolume = deck.volume;
-    
-    // Apply hand volume if hand controlled
-    if (deck.handControlled) {
-        finalVolume *= deck.handVolume;
-    }
-    
-    // Apply to professional multi-channel player
-    if (deck.multiChannelPlayer && deck.audioChannels) {
-        Object.keys(deck.audioChannels).forEach(channel => {
-            const channelState = deck.audioChannels[channel];
-            let channelVolume = channelState.enabled ? channelState.volume * finalVolume : 0;
-            
-            // Apply mute
-            if (channelState.mute) channelVolume = 0;
-            
-            deck.multiChannelPlayer.setChannelVolume(channel, channelVolume);
-        });
-    }
-    
-    // Apply to single audio element
-    if (deck.audio) {
-        deck.audio.volume = finalVolume;
-    }
-}
+// Note: updateDeckVolume is defined in hand-gestures.js with full mute support
 
 // Enhanced cleanup function
 function cleanupDeckTrack(deckLetter) {
@@ -680,50 +650,8 @@ function audioBufferToWav(buffer) {
     return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
-// Play professional multi-channel waveforms
-function playProfessionalMultiChannelWaveforms(deckLetter) {
-    const deck = deckState[deckLetter];
-    
-    if (!deck.wavesurfers) return;
-    
-    Object.values(deck.wavesurfers).forEach(wavesurfer => {
-        if (wavesurfer && !wavesurfer.isPlaying()) {
-            wavesurfer.play();
-        }
-    });
-    
-    console.log(`▶️ Professional multi-channel waveforms playing for Deck ${deckLetter}`);
-}
-
-// Pause professional multi-channel waveforms
-function pauseProfessionalMultiChannelWaveforms(deckLetter) {
-    const deck = deckState[deckLetter];
-    
-    if (!deck.wavesurfers) return;
-    
-    Object.values(deck.wavesurfers).forEach(wavesurfer => {
-        if (wavesurfer && wavesurfer.isPlaying()) {
-            wavesurfer.pause();
-        }
-    });
-    
-    console.log(`⏸️ Professional multi-channel waveforms paused for Deck ${deckLetter}`);
-}
-
-// Stop professional multi-channel waveforms
-function stopProfessionalMultiChannelWaveforms(deckLetter) {
-    const deck = deckState[deckLetter];
-    
-    if (!deck.wavesurfers) return;
-    
-    Object.values(deck.wavesurfers).forEach(wavesurfer => {
-        if (wavesurfer) {
-            wavesurfer.stop();
-        }
-    });
-    
-    console.log(`⏹️ Professional multi-channel waveforms stopped for Deck ${deckLetter}`);
-}
+// Note: The professional multi-channel waveform control functions 
+// (play, pause, stop) are defined in wavesurfer-setup.js to avoid duplication
 
 console.log('✅ Professional Multi-Channel Deck Manager Ready');
 console.log('🎛️ Features:');

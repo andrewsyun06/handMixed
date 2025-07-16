@@ -716,10 +716,7 @@ function initializeProfessionalDeckUIEnhancements() {
     console.log('✅ Professional deck UI enhancements initialized');
 }
 
-// Helper functions for compatibility
-function updateChannelIndicators(deckLetter) {
-    updateProfessionalChannelIndicators(deckLetter);
-}
+// Note: updateChannelIndicators is defined in hand-gestures.js
 
 // BPM-related utility functions (unchanged)
 function getDeckBPM(deckLetter) {

@@ -535,20 +535,7 @@ function updateGlobalPlaybackState() {
     }
 }
 
-function updateGlobalPlaybackUI() {
-    const globalPlayBtn = document.getElementById('globalPlayBtn');
-    const globalPauseBtn = document.getElementById('globalPauseBtn');
-    
-    if (globalPlayBtn && globalPauseBtn) {
-        if (appState.globalPlaybackState === 'playing') {
-            globalPlayBtn.style.display = 'none';
-            globalPauseBtn.style.display = 'block';
-        } else {
-            globalPlayBtn.style.display = 'block';
-            globalPauseBtn.style.display = 'none';
-        }
-    }
-}
+// Note: updateGlobalPlaybackUI is defined in hand-gestures.js to avoid duplication
 
 // Professional BPM Sync Functions
 function areDecksInSync() {

@@ -262,20 +262,25 @@ function processEnhancedHandControl(handSide, landmarks) {
 function processHandVolumeControl(handSide, volume) {
     const deckLetter = handSide === 'leftHand' ? 'A' : 'B';
     const deck = deckState[deckLetter];
+    const hand = handState[handSide];
     
     // Update deck volume based on hand position
     deck.handVolume = volume;
     deck.handControlled = true;
     
-    // Apply volume to audio if track is loaded and playing
-    if (deck.audio && deck.track) {
-        updateDeckVolume(deckLetter);
+    // Apply volume to audio if track is loaded
+    if ((deck.audio || deck.multiChannelPlayer) && deck.track) {
+        // Volume affects only the channels in the current mode
+        const mode = hand.gestures ? hand.gestures.mode : 'all';
+        updateDeckVolumeWithMode(deckLetter, volume, mode);
     }
     
     // Update visual indicator
     updateDeckVolumeIndicator(deckLetter, volume * 100);
     
-    console.log(`🔊 Deck ${deckLetter} hand volume: ${Math.round(volume * 100)}%`);
+    // Show mode in console
+    const mode = hand.gestures ? hand.gestures.mode : 'all';
+    console.log(`🔊 Deck ${deckLetter} hand volume: ${Math.round(volume * 100)}% (Mode: ${mode})`);
 }
 
 // Enhanced finger gesture detection with improved accuracy
@@ -283,82 +288,136 @@ function detectAndProcessFingerGestures(handSide, landmarks) {
     const hand = handState[handSide];
     const deckLetter = handSide === 'leftHand' ? 'A' : 'B';
     
-    // Get fingertip positions
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-    const middleTip = landmarks[12];
-    const ringTip = landmarks[16];
-    const pinkyTip = landmarks[20];
-    
-    // Enhanced gesture detection with improved threshold
-    const gestureThreshold = 0.05; // Distance threshold for finger connection
+    // Detect finger count gesture
+    const fingerCount = detectFingerCount(landmarks);
     const currentTime = Date.now();
     
-    // Check each finger-thumb connection
-    const gestures = {
-        thumbIndex: calculateDistance(thumbTip, indexTip) < gestureThreshold,
-        thumbMiddle: calculateDistance(thumbTip, middleTip) < gestureThreshold,
-        thumbRing: calculateDistance(thumbTip, ringTip) < gestureThreshold,
-        thumbPinky: calculateDistance(thumbTip, pinkyTip) < gestureThreshold
-    };
+    // Initialize gesture state if not exists
+    if (!hand.gestures) {
+        hand.gestures = {
+            fingerCount: 0,
+            lastFingerCount: 0,
+            mode: 'all' // 'all', 'main', 'bass', 'drums'
+        };
+    }
     
-    // Process gesture changes with cooldown
-    Object.keys(gestures).forEach(gestureKey => {
-        const isActive = gestures[gestureKey];
-        const wasActive = hand.gestures && hand.gestures[gestureKey];
-        
-        if (isActive && !wasActive) {
-            // Gesture started - check cooldown
-            if (!hand.lastGestureTime || 
-                currentTime - hand.lastGestureTime > 500) { // 500ms cooldown
-                
-                // Initialize gestures object if not exists
-                if (!hand.gestures) {
-                    hand.gestures = {
-                        thumbIndex: false,
-                        thumbMiddle: false,
-                        thumbRing: false,
-                        thumbPinky: false
-                    };
-                }
-                
-                hand.gestures[gestureKey] = true;
-                hand.lastGestureTime = currentTime;
-                
-                // Trigger gesture action
-                triggerGestureAction(gestureKey, handSide, deckLetter);
+    // Check if finger count changed
+    if (fingerCount !== hand.gestures.lastFingerCount) {
+        // Check cooldown
+        if (!hand.lastGestureTime || currentTime - hand.lastGestureTime > 300) {
+            hand.gestures.fingerCount = fingerCount;
+            hand.gestures.lastFingerCount = fingerCount;
+            hand.lastGestureTime = currentTime;
+            
+            // Update mode based on finger count
+            let newMode = 'all';
+            switch (fingerCount) {
+                case 1:
+                    newMode = 'main';
+                    break;
+                case 2:
+                    newMode = 'bass';
+                    break;
+                case 3:
+                    newMode = 'drums';
+                    break;
+                case 4:
+                case 5:
+                    newMode = 'all';
+                    break;
             }
-        } else if (!isActive && wasActive) {
-            // Gesture ended
-            if (hand.gestures) {
-                hand.gestures[gestureKey] = false;
+            
+            if (newMode !== hand.gestures.mode) {
+                hand.gestures.mode = newMode;
+                triggerFingerCountAction(fingerCount, handSide, deckLetter, newMode);
             }
         }
-    });
+    }
 }
 
-// Trigger gesture action with enhanced feedback
-function triggerGestureAction(gestureKey, handSide, deckLetter) {
-    console.log(`🖐️ Enhanced gesture detected: ${gestureKey} on ${handSide} (Deck ${deckLetter})`);
+// Detect number of extended fingers
+function detectFingerCount(landmarks) {
+    let count = 0;
     
-    // Call the placeholder functions based on gesture
-    switch (gestureKey) {
-        case 'thumbIndex':
-            onThumbIndexGesture(handSide, deckLetter);
+    // Check thumb - thumb tip above thumb IP joint
+    if (landmarks[4].y < landmarks[3].y) count++;
+    
+    // Check index finger - tip above PIP joint
+    if (landmarks[8].y < landmarks[6].y) count++;
+    
+    // Check middle finger
+    if (landmarks[12].y < landmarks[10].y) count++;
+    
+    // Check ring finger
+    if (landmarks[16].y < landmarks[14].y) count++;
+    
+    // Check pinky
+    if (landmarks[20].y < landmarks[18].y) count++;
+    
+    return count;
+}
+
+// Trigger finger count action with enhanced feedback
+function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
+    console.log(`🖐️ Finger count detected: ${fingerCount} on ${handSide} (Deck ${deckLetter}) - Mode: ${mode}`);
+    
+    const deck = deckState[deckLetter];
+    
+    // Update deck's active mode
+    if (!deck.activeMode) {
+        deck.activeMode = 'all';
+    }
+    deck.activeMode = mode;
+    
+    // Update channel states based on mode
+    switch (mode) {
+        case 'main':
+            // Only main/synth channel active
+            if (deck.audioChannels) {
+                deck.audioChannels.bass.enabled = false;
+                deck.audioChannels.drums.enabled = false;
+                deck.audioChannels.synth.enabled = true;
+            }
+            updateStatus(`Deck ${deckLetter}: Main track only (1 finger)`, 'info');
             break;
-        case 'thumbMiddle':
-            onThumbMiddleGesture(handSide, deckLetter);
+            
+        case 'bass':
+            // Only bass channel active
+            if (deck.audioChannels) {
+                deck.audioChannels.bass.enabled = true;
+                deck.audioChannels.drums.enabled = false;
+                deck.audioChannels.synth.enabled = false;
+            }
+            updateStatus(`Deck ${deckLetter}: Bass only (2 fingers)`, 'info');
             break;
-        case 'thumbRing':
-            onThumbRingGesture(handSide, deckLetter);
+            
+        case 'drums':
+            // Only drums channel active
+            if (deck.audioChannels) {
+                deck.audioChannels.bass.enabled = false;
+                deck.audioChannels.drums.enabled = true;
+                deck.audioChannels.synth.enabled = false;
+            }
+            updateStatus(`Deck ${deckLetter}: Drums only (3 fingers)`, 'info');
             break;
-        case 'thumbPinky':
-            onThumbPinkyGesture(handSide, deckLetter);
+            
+        case 'all':
+            // All channels active
+            if (deck.audioChannels) {
+                deck.audioChannels.bass.enabled = true;
+                deck.audioChannels.drums.enabled = true;
+                deck.audioChannels.synth.enabled = true;
+            }
+            updateStatus(`Deck ${deckLetter}: All channels (open hand)`, 'info');
             break;
     }
     
+    // Update audio channel settings
+    updateAudioChannelSettings(deckLetter);
+    updateChannelIndicators(deckLetter);
+    
     // Visual feedback
-    showGestureVisualFeedback(deckLetter, gestureKey);
+    showFingerCountFeedback(deckLetter, fingerCount, mode);
 }
 
 // PLACEHOLDER FUNCTIONS - These will be called when gestures are detected
@@ -394,24 +453,49 @@ function onThumbPinkyGesture(handSide, deckLetter) {
     toggleAllAudioChannels(deckLetter);
 }
 
-// Show visual feedback for gestures
-function showGestureVisualFeedback(deckLetter, gestureKey) {
+// Show visual feedback for finger count
+function showFingerCountFeedback(deckLetter, fingerCount, mode) {
     const overlay = document.getElementById(`deck${deckLetter}Overlay`);
     if (!overlay) return;
     
     // Create temporary feedback element
     const feedback = document.createElement('div');
     feedback.className = 'gesture-feedback';
-    feedback.textContent = getGestureEmoji(gestureKey);
+    
+    let emoji = '✋';
+    let text = '';
+    switch (fingerCount) {
+        case 1:
+            emoji = '☝️';
+            text = 'MAIN';
+            break;
+        case 2:
+            emoji = '✌️';
+            text = 'BASS';
+            break;
+        case 3:
+            emoji = '🤟';
+            text = 'DRUMS';
+            break;
+        case 4:
+        case 5:
+            emoji = '🖐️';
+            text = 'ALL';
+            break;
+    }
+    
+    feedback.innerHTML = `<span style="font-size: 2rem;">${emoji}</span><br><span style="font-size: 1rem; font-weight: bold;">${text}</span>`;
     feedback.style.cssText = `
         position: absolute;
-        top: 10px;
-        right: 10px;
-        font-size: 2rem;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
         color: #00d4ff;
         z-index: 1000;
-        animation: gestureFlash 0.5s ease-out;
+        animation: gestureFlash 0.8s ease-out;
         pointer-events: none;
+        text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
     `;
     
     // Add CSS animation if not exists
@@ -420,9 +504,22 @@ function showGestureVisualFeedback(deckLetter, gestureKey) {
         style.id = 'gestureFlashStyle';
         style.textContent = `
             @keyframes gestureFlash {
-                0% { opacity: 0; transform: scale(0.5); }
-                50% { opacity: 1; transform: scale(1.2); }
-                100% { opacity: 0; transform: scale(1); }
+                0% { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) scale(0.5); 
+                }
+                20% { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) scale(1.2); 
+                }
+                80% { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) scale(1); 
+                }
+                100% { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) scale(0.9); 
+                }
             }
         `;
         document.head.appendChild(style);
@@ -435,7 +532,7 @@ function showGestureVisualFeedback(deckLetter, gestureKey) {
         if (feedback.parentNode) {
             feedback.remove();
         }
-    }, 500);
+    }, 800);
 }
 
 // Get emoji for gesture
@@ -573,78 +670,85 @@ function drawEnhancedHandMask(landmarks, isUserLeftHand, handColor, glowColor) {
         const canvasWidth = rect.width;
         const canvasHeight = rect.height;
 
-        // Get hand bounds
-        let minX = 1, maxX = 0, minY = 1, maxY = 0;
-        landmarks.forEach(landmark => {
-            minX = Math.min(minX, landmark.x);
-            maxX = Math.max(maxX, landmark.x);
-            minY = Math.min(minY, landmark.y);
-            maxY = Math.max(maxY, landmark.y);
-        });
+        // Get wrist position for deck label
+        const wrist = landmarks[0];
+        const wristX = Math.round(wrist.x * canvasWidth);
+        const wristY = Math.round(wrist.y * canvasHeight);
 
-        // Expand bounds
-        const padding = 0.06;
-        minX = Math.max(0, minX - padding);
-        maxX = Math.min(1, maxX + padding);
-        minY = Math.max(0, minY - padding);
-        maxY = Math.min(1, maxY + padding);
-
-        // Calculate pixel-aligned coordinates
-        const x = Math.round(minX * canvasWidth) + 0.5;
-        const y = Math.round(minY * canvasHeight) + 0.5;
-        const width = Math.round((maxX - minX) * canvasWidth);
-        const height = Math.round((maxY - minY) * canvasHeight);
-        const radius = 20;
-
-        // Draw enhanced rounded rectangle mask
-        canvasCtx.save();
-        canvasCtx.fillStyle = glowColor;
-        canvasCtx.strokeStyle = handColor;
-        canvasCtx.lineWidth = 3;
-        canvasCtx.shadowColor = handColor;
-        canvasCtx.shadowBlur = 10;
-        
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(x + radius, y);
-        canvasCtx.lineTo(x + width - radius, y);
-        canvasCtx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        canvasCtx.lineTo(x + width, y + height - radius);
-        canvasCtx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        canvasCtx.lineTo(x + radius, y + height);
-        canvasCtx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        canvasCtx.lineTo(x, y + radius);
-        canvasCtx.quadraticCurveTo(x, y, x + radius, y);
-        canvasCtx.closePath();
-
-        canvasCtx.fill();
-        canvasCtx.stroke();
-        canvasCtx.restore();
-
-        // Draw enhanced deck label
+        // Draw stylized deck label near wrist
         const deckLabel = isUserLeftHand ? 'DECK A' : 'DECK B';
-        const textX = x + width / 2;
-        const textY = y - 15;
-
+        
         canvasCtx.save();
+        
+        // Create gradient for text
+        const gradient = canvasCtx.createLinearGradient(wristX - 40, wristY, wristX + 40, wristY);
+        gradient.addColorStop(0, handColor);
+        gradient.addColorStop(0.5, '#ffffff');
+        gradient.addColorStop(1, handColor);
+        
+        // Flip canvas for text
         canvasCtx.scale(-1, 1);
-        const flippedTextX = -textX;
-
-        canvasCtx.font = 'bold 18px Orbitron, monospace';
-        canvasCtx.fillStyle = handColor;
-        canvasCtx.strokeStyle = '#000';
-        canvasCtx.lineWidth = 4;
+        const flippedX = -wristX;
+        
+        // Draw glowing text effect
+        canvasCtx.font = 'bold 16px Orbitron, monospace';
         canvasCtx.textAlign = 'center';
-        canvasCtx.textBaseline = 'bottom';
+        canvasCtx.textBaseline = 'middle';
+        
+        // Multiple shadow layers for glow
         canvasCtx.shadowColor = handColor;
-        canvasCtx.shadowBlur = 5;
-
-        canvasCtx.strokeText(deckLabel, flippedTextX, textY);
-        canvasCtx.fillText(deckLabel, flippedTextX, textY);
-
+        canvasCtx.shadowBlur = 20;
+        canvasCtx.fillStyle = gradient;
+        canvasCtx.fillText(deckLabel, flippedX, wristY + 30);
+        
+        // Second pass for stronger glow
+        canvasCtx.shadowBlur = 10;
+        canvasCtx.fillStyle = '#ffffff';
+        canvasCtx.fillText(deckLabel, flippedX, wristY + 30);
+        
         canvasCtx.restore();
+        
+        // Draw gesture indicator if active
+        const hand = handState[isUserLeftHand ? 'leftHand' : 'rightHand'];
+        if (hand && hand.gestures && hand.gestures.mode) {
+            const gestureText = getGestureText(hand);
+            
+            if (gestureText) {
+                canvasCtx.save();
+                canvasCtx.scale(-1, 1);
+                
+                canvasCtx.font = 'bold 14px Orbitron, monospace';
+                canvasCtx.textAlign = 'center';
+                canvasCtx.textBaseline = 'middle';
+                canvasCtx.fillStyle = '#00ff88';
+                canvasCtx.shadowColor = '#00ff88';
+                canvasCtx.shadowBlur = 10;
+                
+                canvasCtx.fillText(gestureText, flippedX, wristY + 50);
+                canvasCtx.restore();
+            }
+        }
         
     } catch (error) {
         console.error('❌ Enhanced hand mask drawing error:', error);
+    }
+}
+
+// Get gesture text description
+function getGestureText(hand) {
+    if (!hand || !hand.gestures) return '';
+    
+    switch (hand.gestures.mode) {
+        case 'main':
+            return 'MAIN';
+        case 'bass':
+            return 'BASS';
+        case 'drums':
+            return 'DRUMS';
+        case 'all':
+            return 'ALL';
+        default:
+            return '';
     }
 }
 

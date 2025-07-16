@@ -279,7 +279,11 @@ function updateDeckVolume(deckLetter) {
     if (deck.multiChannelPlayer && deck.audioChannels) {
         Object.keys(deck.audioChannels).forEach(channelType => {
             const channel = deck.audioChannels[channelType];
-            const channelVolume = channel.enabled ? channel.volume * finalVolume : 0;
+            let channelVolume = channel.enabled ? channel.volume * finalVolume : 0;
+            
+            // Apply mute
+            if (channel.mute) channelVolume = 0;
+            
             deck.multiChannelPlayer.setChannelVolume(channelType, channelVolume);
         });
     }
@@ -299,6 +303,54 @@ function updateDeckVolume(deckLetter) {
     }
     
     console.log(`🔊 Deck ${deckLetter} volume updated: ${Math.round(finalVolume * 100)}%`);
+}
+
+// Update deck volume with mode-specific control
+function updateDeckVolumeWithMode(deckLetter, handVolume, mode) {
+    const deck = deckState[deckLetter];
+    
+    if (!deck.audio && !deck.multiChannelPlayer) return;
+    
+    let baseVolume = deck.volume;
+    
+    // Apply to multi-channel player
+    if (deck.multiChannelPlayer && deck.audioChannels) {
+        Object.keys(deck.audioChannels).forEach(channelType => {
+            const channel = deck.audioChannels[channelType];
+            
+            // Apply hand volume only to channels that are active in the current mode
+            let channelVolume = 0;
+            
+            if (mode === 'all' && channel.enabled) {
+                // In 'all' mode, hand controls all enabled channels
+                channelVolume = channel.volume * baseVolume * handVolume;
+            } else if (mode === 'main' && channelType === 'synth' && channel.enabled) {
+                // In 'main' mode, hand only controls synth channel
+                channelVolume = channel.volume * baseVolume * handVolume;
+            } else if (mode === 'bass' && channelType === 'bass' && channel.enabled) {
+                // In 'bass' mode, hand only controls bass channel
+                channelVolume = channel.volume * baseVolume * handVolume;
+            } else if (mode === 'drums' && channelType === 'drums' && channel.enabled) {
+                // In 'drums' mode, hand only controls drums channel
+                channelVolume = channel.volume * baseVolume * handVolume;
+            } else if (channel.enabled) {
+                // Other channels maintain their current volume
+                channelVolume = channel.volume * baseVolume * deck.lastHandVolume;
+            }
+            
+            deck.multiChannelPlayer.setChannelVolume(channelType, channelVolume);
+        });
+        
+        // Store last hand volume for channels not being controlled
+        deck.lastHandVolume = handVolume;
+    }
+    
+    // Apply to single audio element (fallback mode)
+    if (deck.audio) {
+        deck.audio.volume = baseVolume * handVolume;
+    }
+    
+    console.log(`🔊 Deck ${deckLetter} mode-based volume: ${Math.round(handVolume * 100)}% (Mode: ${mode})`);
 }
 
 // Initialize enhanced audio channels for both decks
