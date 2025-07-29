@@ -421,7 +421,6 @@ const AUDIO_CONFIG = {
 const globalControls = {
     playBoth: false,
     syncDecks: false,
-    crossfaderPosition: 50,
     masterVolume: 0.8,
     
     // Professional features

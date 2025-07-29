@@ -209,16 +209,6 @@
             STOP HAND DJ
         </button>
 
-        <div class="crossfader-container" id="crossfaderContainer" style="display: none;">
-            <div class="crossfader-label">CROSSFADER</div>
-            <div class="crossfader-track">
-                <div class="crossfader-handle" id="crossfaderHandle"></div>
-            </div>
-            <div class="crossfader-labels">
-                <span class="a">A</span>
-                <span class="b">B</span>
-            </div>
-        </div>
 
         <button class="play-both-btn" id="playBothBtn" style="display: none;" onclick="window.playBothDecks()">
             PLAY BOTH DECKS
@@ -291,6 +281,7 @@
     <script src="/static/js/deck/simple-deck-loader.js"></script>
     <script src="/static/js/deck/advanced-audio-splitter.js"></script>
     <script src="/static/js/deck/audio-waveform-renderer.js"></script>
+    <script src="/static/js/integration/gesture-integration-bridge.js"></script>
     <script src="/static/js/mediapipe-hand-init.js"></script>
     
     <script>
@@ -754,7 +745,6 @@
                         // Hide placeholder and show controls
                         document.getElementById('cameraPlaceholder').style.display = 'none';
                         document.getElementById('stopHandDJ').style.display = 'block';
-                        document.getElementById('crossfaderContainer').style.display = 'block';
                         document.getElementById('playBothBtn').style.display = 'block';
                         document.getElementById('testAudioBtn').style.display = 'block';
                         
@@ -813,7 +803,6 @@
                 // Show placeholder and hide controls
                 document.getElementById('cameraPlaceholder').style.display = 'flex';
                 document.getElementById('stopHandDJ').style.display = 'none';
-                document.getElementById('crossfaderContainer').style.display = 'none';
                 document.getElementById('playBothBtn').style.display = 'none';
                 document.getElementById('testAudioBtn').style.display = 'none';
                 
