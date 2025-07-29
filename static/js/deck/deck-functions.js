@@ -85,9 +85,54 @@ function toggleAudioChannel(deckLetter, channel) {
     }
 }
 
+// Play both decks simultaneously
+function playBothDecks() {
+    console.log('Playing both decks A & B simultaneously');
+    
+    // Check if both decks have tracks loaded
+    const deckA = deckState.A;
+    const deckB = deckState.B;
+    
+    if (!deckA.track && !deckB.track) {
+        console.warn('Cannot play both decks - no tracks loaded in either deck');
+        if (window.updateStatus) {
+            window.updateStatus('Load tracks in both decks first', 'error');
+        }
+        return;
+    }
+    
+    // Play deck A if it has a track
+    if (deckA.track && !deckA.isPlaying) {
+        console.log('Starting playback on Deck A');
+        playDeck('A');
+    }
+    
+    // Play deck B if it has a track
+    if (deckB.track && !deckB.isPlaying) {
+        console.log('Starting playback on Deck B');
+        playDeck('B');
+    }
+    
+    // Update global state
+    if (window.updateGlobalPlaybackState) {
+        window.updateGlobalPlaybackState();
+    }
+    
+    console.log('✅ Both decks playing simultaneously');
+    
+    // Show status message
+    if (window.updateStatus) {
+        const playingDecks = [];
+        if (deckA.track) playingDecks.push('A');
+        if (deckB.track) playingDecks.push('B');
+        window.updateStatus(`Playing Deck${playingDecks.length > 1 ? 's' : ''} ${playingDecks.join(' & ')} simultaneously`, 'success');
+    }
+}
+
 // Export functions
 // window.loadTrackToDeck = loadTrackToDeck; // Commented out - using multi-channel-audio.js implementation
 window.playDeck = playDeck;
 window.pauseDeck = pauseDeck;
 window.updateDeckVolume = updateDeckVolume;
 window.toggleAudioChannel = toggleAudioChannel;
+window.playBothDecks = playBothDecks;

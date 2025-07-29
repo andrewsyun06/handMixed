@@ -210,8 +210,8 @@
         </button>
 
 
-        <button class="play-both-btn" id="playBothBtn" style="display: none;" onclick="window.playBothDecks()">
-            PLAY BOTH DECKS
+        <button class="play-both-btn" id="playBothBtn" onclick="window.playBothDecks()">
+            PLAY BOTH DECKS A & B
         </button>
         
         <button class="play-both-btn" id="testAudioBtn" style="display: none; bottom: 40px; background: #ff0080;" onclick="testSimpleAudio()">
@@ -745,7 +745,7 @@
                         // Hide placeholder and show controls
                         document.getElementById('cameraPlaceholder').style.display = 'none';
                         document.getElementById('stopHandDJ').style.display = 'block';
-                        document.getElementById('playBothBtn').style.display = 'block';
+                        // playBothBtn is now always visible
                         document.getElementById('testAudioBtn').style.display = 'block';
                         
                         console.log('Camera started successfully');
@@ -803,7 +803,7 @@
                 // Show placeholder and hide controls
                 document.getElementById('cameraPlaceholder').style.display = 'flex';
                 document.getElementById('stopHandDJ').style.display = 'none';
-                document.getElementById('playBothBtn').style.display = 'none';
+                // playBothBtn stays visible
                 document.getElementById('testAudioBtn').style.display = 'none';
                 
                 console.log('Hand DJ stopped');
