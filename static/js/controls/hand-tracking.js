@@ -415,31 +415,65 @@ function detectAndProcessFingerGestures(handSide, landmarks) {
     }
 }
 
-// Detect number of extended fingers
+// Detect number of extended fingers with improved accuracy
 function detectFingerCount(landmarks) {
     let count = 0;
+    let fingerStatus = [];
     
-    // Check thumb - thumb tip above thumb IP joint
-    if (landmarks[4].y < landmarks[3].y) count++;
+    // Check thumb - use distance from palm center for better accuracy
+    const palmCenter = landmarks[0]; // Wrist
+    const thumbTip = landmarks[4];
+    const thumbDistance = Math.sqrt(
+        Math.pow(thumbTip.x - palmCenter.x, 2) + 
+        Math.pow(thumbTip.y - palmCenter.y, 2)
+    );
+    const thumbExtended = thumbDistance > 0.12; // Threshold for extended thumb
     
-    // Check index finger - tip above PIP joint
-    if (landmarks[8].y < landmarks[6].y) count++;
+    if (thumbExtended) {
+        count++;
+        fingerStatus.push('thumb');
+    }
     
-    // Check middle finger
-    if (landmarks[12].y < landmarks[10].y) count++;
+    // Check index finger - tip above PIP joint with threshold
+    if (landmarks[8].y < landmarks[6].y - 0.02) {
+        count++;
+        fingerStatus.push('index');
+    }
     
-    // Check ring finger
-    if (landmarks[16].y < landmarks[14].y) count++;
+    // Check middle finger - tip above PIP joint with threshold
+    if (landmarks[12].y < landmarks[10].y - 0.02) {
+        count++;
+        fingerStatus.push('middle');
+    }
     
-    // Check pinky
-    if (landmarks[20].y < landmarks[18].y) count++;
+    // Check ring finger - tip above PIP joint with threshold
+    if (landmarks[16].y < landmarks[14].y - 0.02) {
+        count++;
+        fingerStatus.push('ring');
+    }
+    
+    // Check pinky - tip above PIP joint with threshold
+    if (landmarks[20].y < landmarks[18].y - 0.02) {
+        count++;
+        fingerStatus.push('pinky');
+    }
+    
+    // Debug logging
+    console.log(`👆 Fingers detected: ${count} [${fingerStatus.join(', ')}]`);
     
     return count;
 }
 
 // Trigger finger count action with new control scheme
 function triggerFingerCountAction(fingerCount, handSide, deckLetter) {
-    console.log(`🖐️ Finger count detected: ${fingerCount} on ${handSide} (Deck ${deckLetter})`);
+    console.log(`🖐️ GESTURE TRIGGERED: ${fingerCount} fingers on ${handSide} (Deck ${deckLetter})`);
+    console.log(`🎯 Expected mapping:`);
+    console.log(`  0 fingers (fist) = Toggle all channels`);
+    console.log(`  1 finger = Toggle BASS`);
+    console.log(`  2 fingers = Toggle DRUMS`);
+    console.log(`  3 fingers = Toggle SYNTH`);
+    console.log(`  4 fingers = Volume control`);
+    console.log(`  5 fingers = All channels ON`);
     
     const deck = deckState[deckLetter];
     const hand = handState[handSide];
@@ -453,60 +487,178 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter) {
         };
     }
     
+    // Initialize audioChannels if they don't exist
+    if (!deck.audioChannels) {
+        console.log(`🔧 Initializing audioChannels for deck ${deckLetter}`);
+        deck.audioChannels = {
+            bass: { enabled: true, volume: 1.0, solo: false, mute: false },
+            drums: { enabled: true, volume: 1.0, solo: false, mute: false },
+            synth: { enabled: true, volume: 1.0, solo: false, mute: false }
+        };
+    }
+    
+    console.log(`🎚️ Current channel states before action:`, {
+        bass: deck.audioChannels.bass.enabled,
+        drums: deck.audioChannels.drums.enabled,
+        synth: deck.audioChannels.synth.enabled
+    });
+    
     // Handle gestures based on finger count
     switch (fingerCount) {
         case 0:
             // Fist = Toggle all channels OFF/ON
-            const allCurrentlyEnabled = deck.audioChannels.bass.enabled && 
-                                       deck.audioChannels.drums.enabled && 
-                                       deck.audioChannels.synth.enabled;
-            
-            // If all are currently on, turn them all off. If any are off, turn them all on.
-            const newState = !allCurrentlyEnabled;
-            
-            console.log(`👊 Fist detected - Toggling all channels ${newState ? 'ON' : 'OFF'} for Deck ${deckLetter}`);
-            deck.audioChannels.bass.enabled = newState;
-            deck.audioChannels.drums.enabled = newState;
-            deck.audioChannels.synth.enabled = newState;
+            console.log(`👊 Fist detected - Toggling all channels for Deck ${deckLetter}`);
             hand.gestureMode = 'fist';
             
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: All channels ${newState ? 'ON' : 'OFF'} (Fist) 👊`, 'info');
+            // Try multiple function calls to ensure it works
+            let success = false;
+            
+            // Try the hand-gestures toggleAllAudioChannels function
+            if (typeof window.toggleAllAudioChannels === 'function') {
+                try {
+                    window.toggleAllAudioChannels(deckLetter);
+                    console.log(`✅ Toggled all channels via toggleAllAudioChannels for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleAllAudioChannels:`, error);
+                }
             }
-            showFingerCountFeedback(deckLetter, fingerCount, `All ${newState ? 'ON' : 'OFF'}`, '👊');
+            
+            // Fallback: manually toggle all channels
+            if (!success) {
+                console.warn(`⚠️ toggleAllAudioChannels function not found, manually toggling all`);
+                
+                const allCurrentlyEnabled = deck.audioChannels.bass.enabled && 
+                                           deck.audioChannels.drums.enabled && 
+                                           deck.audioChannels.synth.enabled;
+                
+                // If all are currently on, turn them all off. If any are off, turn them all on.
+                const newState = !allCurrentlyEnabled;
+                
+                deck.audioChannels.bass.enabled = newState;
+                deck.audioChannels.drums.enabled = newState;
+                deck.audioChannels.synth.enabled = newState;
+                
+                console.log(`🔧 Manually toggled all channels to: ${newState}`);
+                
+                if (typeof updateStatus === 'function') {
+                    updateStatus(`Deck ${deckLetter}: All channels ${newState ? 'ON' : 'OFF'}`, 'info');
+                }
+            }
             break;
             
         case 1:
             // Pointer finger = BASS toggle
             console.log(`☝️ Pointer finger - BASS toggle for Deck ${deckLetter}`);
-            deck.audioChannels.bass.enabled = !deck.audioChannels.bass.enabled;
             hand.gestureMode = 'bass';
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: BASS ${deck.audioChannels.bass.enabled ? 'ON' : 'OFF'} ☝️`, 'info');
+            
+            // Try multiple function calls to ensure it works
+            let success = false;
+            
+            // Try the hand-gestures toggleAudioChannel function
+            if (typeof window.toggleAudioChannel === 'function') {
+                try {
+                    window.toggleAudioChannel(deckLetter, 'bass');
+                    console.log(`✅ Toggled bass channel via toggleAudioChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleAudioChannel:`, error);
+                }
             }
-            showFingerCountFeedback(deckLetter, fingerCount, `BASS ${deck.audioChannels.bass.enabled ? 'ON' : 'OFF'}`, '☝️');
+            
+            // Try the multi-channel audio toggleChannel function
+            if (!success && typeof window.toggleChannel === 'function') {
+                try {
+                    window.toggleChannel(deckLetter, 'bass');
+                    console.log(`✅ Toggled bass channel via toggleChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleChannel:`, error);
+                }
+            }
+            
+            // Fallback: manually toggle the state
+            if (!success) {
+                console.warn(`⚠️ No toggle functions found, manually toggling bass`);
+                deck.audioChannels.bass.enabled = !deck.audioChannels.bass.enabled;
+                console.log(`🔧 Manually toggled bass to: ${deck.audioChannels.bass.enabled}`);
+            }
             break;
             
         case 2:
             // Two fingers (peace sign) = DRUMS toggle
             console.log(`✌️ Two fingers - DRUMS toggle for Deck ${deckLetter}`);
-            deck.audioChannels.drums.enabled = !deck.audioChannels.drums.enabled;
             hand.gestureMode = 'drums';
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: DRUMS ${deck.audioChannels.drums.enabled ? 'ON' : 'OFF'} ✌️`, 'info');
+            
+            // Try multiple function calls to ensure it works
+            let success = false;
+            
+            // Try the hand-gestures toggleAudioChannel function
+            if (typeof window.toggleAudioChannel === 'function') {
+                try {
+                    window.toggleAudioChannel(deckLetter, 'drums');
+                    console.log(`✅ Toggled drums channel via toggleAudioChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleAudioChannel:`, error);
+                }
             }
-            showFingerCountFeedback(deckLetter, fingerCount, `DRUMS ${deck.audioChannels.drums.enabled ? 'ON' : 'OFF'}`, '✌️');
+            
+            // Try the multi-channel audio toggleChannel function
+            if (!success && typeof window.toggleChannel === 'function') {
+                try {
+                    window.toggleChannel(deckLetter, 'drums');
+                    console.log(`✅ Toggled drums channel via toggleChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleChannel:`, error);
+                }
+            }
+            
+            // Fallback: manually toggle the state
+            if (!success) {
+                console.warn(`⚠️ No toggle functions found, manually toggling drums`);
+                deck.audioChannels.drums.enabled = !deck.audioChannels.drums.enabled;
+                console.log(`🔧 Manually toggled drums to: ${deck.audioChannels.drums.enabled}`);
+            }
             break;
             
         case 3:
             // Three fingers = SYNTH toggle
             console.log(`🤟 Three fingers - SYNTH toggle for Deck ${deckLetter}`);
-            deck.audioChannels.synth.enabled = !deck.audioChannels.synth.enabled;
             hand.gestureMode = 'synth';
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: SYNTH ${deck.audioChannels.synth.enabled ? 'ON' : 'OFF'} 🤟`, 'info');
+            
+            // Try multiple function calls to ensure it works
+            let success = false;
+            
+            // Try the hand-gestures toggleAudioChannel function
+            if (typeof window.toggleAudioChannel === 'function') {
+                try {
+                    window.toggleAudioChannel(deckLetter, 'synth');
+                    console.log(`✅ Toggled synth channel via toggleAudioChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleAudioChannel:`, error);
+                }
             }
-            showFingerCountFeedback(deckLetter, fingerCount, `SYNTH ${deck.audioChannels.synth.enabled ? 'ON' : 'OFF'}`, '🤟');
+            
+            // Try the multi-channel audio toggleChannel function
+            if (!success && typeof window.toggleChannel === 'function') {
+                try {
+                    window.toggleChannel(deckLetter, 'synth');
+                    console.log(`✅ Toggled synth channel via toggleChannel for deck ${deckLetter}`);
+                    success = true;
+                } catch (error) {
+                    console.error(`❌ Error with toggleChannel:`, error);
+                }
+            }
+            
+            // Fallback: manually toggle the state
+            if (!success) {
+                console.warn(`⚠️ No toggle functions found, manually toggling synth`);
+                deck.audioChannels.synth.enabled = !deck.audioChannels.synth.enabled;
+                console.log(`🔧 Manually toggled synth to: ${deck.audioChannels.synth.enabled}`);
+            }
             break;
             
         case 4:
@@ -514,22 +666,57 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter) {
             console.log(`🖖 Four fingers - VOLUME control mode for Deck ${deckLetter}`);
             hand.gestureMode = 'volume';
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: Volume control mode 🖖`, 'info');
+                updateStatus(`Deck ${deckLetter}: Volume control mode`, 'info');
             }
-            showFingerCountFeedback(deckLetter, fingerCount, 'Volume Control', '🖖');
             break;
             
         case 5:
             // High five = All channels ON
             console.log(`🖐️ High five - All channels ON for Deck ${deckLetter}`);
-            deck.audioChannels.bass.enabled = true;
-            deck.audioChannels.drums.enabled = true;
-            deck.audioChannels.synth.enabled = true;
             hand.gestureMode = 'all';
+            
+            // Enable all channels - force them all to ON state
+            let successCount = 0;
+            
+            ['bass', 'drums', 'synth'].forEach(channelType => {
+                let success = false;
+                
+                // Try toggleAudioChannel if channel is currently off
+                if (typeof window.toggleAudioChannel === 'function' && !deck.audioChannels[channelType].enabled) {
+                    try {
+                        window.toggleAudioChannel(deckLetter, channelType);
+                        console.log(`✅ Enabled ${channelType} channel via toggleAudioChannel`);
+                        success = true;
+                        successCount++;
+                    } catch (error) {
+                        console.error(`❌ Error enabling ${channelType}:`, error);
+                    }
+                }
+                
+                // Try toggleChannel if channel is currently off
+                if (!success && typeof window.toggleChannel === 'function' && !deck.audioChannels[channelType].enabled) {
+                    try {
+                        window.toggleChannel(deckLetter, channelType);
+                        console.log(`✅ Enabled ${channelType} channel via toggleChannel`);
+                        success = true;
+                        successCount++;
+                    } catch (error) {
+                        console.error(`❌ Error enabling ${channelType}:`, error);
+                    }
+                }
+                
+                // Fallback: manually enable
+                if (!success) {
+                    deck.audioChannels[channelType].enabled = true;
+                    console.log(`🔧 Manually enabled ${channelType} channel`);
+                    successCount++;
+                }
+            });
+            
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: All channels ON (High Five) 🖐️`, 'info');
+                updateStatus(`Deck ${deckLetter}: All channels ON`, 'info');
             }
-            showFingerCountFeedback(deckLetter, fingerCount, 'All ON', '🖐️');
+            console.log(`✅ Enabled all channels for deck ${deckLetter} (${successCount}/3 successful)`);
             break;
             
         default:
@@ -537,18 +724,55 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter) {
             return;
     }
     
-    // Update audio channel settings
-    if (typeof updateAudioChannelSettings === 'function') {
-        updateAudioChannelSettings(deckLetter);
+    // Update audio channel settings - call the functions directly from window scope
+    console.log(`🔍 Checking available functions:`, {
+        updateAudioChannelSettings: typeof window.updateAudioChannelSettings,
+        updateChannelIndicators: typeof window.updateChannelIndicators,
+        toggleAudioChannel: typeof window.toggleAudioChannel,
+        updateDeckVolume: typeof window.updateDeckVolume
+    });
+    
+    if (typeof window.updateAudioChannelSettings === 'function') {
+        try {
+            window.updateAudioChannelSettings(deckLetter);
+            console.log(`✅ Updated audio channel settings for deck ${deckLetter}`);
+        } catch (error) {
+            console.error(`❌ Error updating audio channel settings:`, error);
+        }
+    } else {
+        console.warn(`⚠️ updateAudioChannelSettings function not found - trying updateDeckVolume instead`);
+        if (typeof window.updateDeckVolume === 'function') {
+            try {
+                window.updateDeckVolume(deckLetter);
+                console.log(`✅ Updated deck volume for deck ${deckLetter}`);
+            } catch (error) {
+                console.error(`❌ Error updating deck volume:`, error);
+            }
+        }
     }
-    if (typeof updateChannelIndicators === 'function') {
-        updateChannelIndicators(deckLetter);
+    
+    if (typeof window.updateChannelIndicators === 'function') {
+        try {
+            window.updateChannelIndicators(deckLetter);
+            console.log(`✅ Updated channel indicators for deck ${deckLetter}`);
+        } catch (error) {
+            console.error(`❌ Error updating channel indicators:`, error);
+        }
+    } else {
+        console.warn(`⚠️ updateChannelIndicators function not found`);
     }
     
     // Update UI channel highlighting
     if (window.updateChannelHighlighting) {
         updateChannelHighlighting(deckLetter, hand.gestureMode);
     }
+    
+    console.log(`🎚️ Channel states after action:`, {
+        bass: deck.audioChannels.bass.enabled,
+        drums: deck.audioChannels.drums.enabled,
+        synth: deck.audioChannels.synth.enabled
+    });
+    console.log(`✅ Gesture action completed for ${fingerCount} fingers`);
 }
 
 // PLACEHOLDER FUNCTIONS - These will be called when gestures are detected
@@ -673,180 +897,124 @@ function getGestureEmoji(gestureKey) {
     return emojis[gestureKey] || '✋';
 }
 
-// Draw enhanced hand landmarks with modern sleek design
+// Draw slick, smooth hand visualization
 function drawEnhancedHandLandmarks(landmarks, isUserLeftHand) {
     try {
-        // Modern color scheme
+        // Slick color scheme
         const handColor = isUserLeftHand ? '#00d4ff' : '#ff6b35';
-        const glowColor = isUserLeftHand ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 107, 53, 0.2)';
-        const accentColor = '#ffffff';
+        const glowColor = isUserLeftHand ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 107, 53, 0.15)';
         
-        // Draw modern connections
-        drawModernConnections(landmarks, handColor);
+        // Draw slick hand silhouette
+        drawSlickHandSilhouette(landmarks, handColor, glowColor);
         
-        // Draw modern landmarks
-        drawModernLandmarks(landmarks, handColor, glowColor);
-        
-        // Draw minimal fingertip indicators
-        drawModernFingertips(landmarks, accentColor);
-        
-        // Draw modern hand label
-        drawModernHandLabel(landmarks, isUserLeftHand, handColor);
+        // Draw minimal gesture indicator
+        drawGestureIndicator(landmarks, isUserLeftHand, handColor);
         
     } catch (error) {
-        console.error('❌ Enhanced drawing error:', error);
+        console.error('❌ Slick drawing error:', error);
     }
 }
 
-// Draw modern connections with sleek lines
-function drawModernConnections(landmarks, color) {
-    if (typeof drawConnectors === 'undefined' || typeof HAND_CONNECTIONS === 'undefined') {
-        return;
+// Draw smooth hand silhouette instead of individual landmarks
+function drawSlickHandSilhouette(landmarks, handColor, glowColor) {
+    const rect = canvas.getBoundingClientRect();
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
+    
+    canvasCtx.save();
+    
+    // Create smooth hand outline path
+    canvasCtx.beginPath();
+    
+    // Start from wrist
+    const wrist = landmarks[0];
+    canvasCtx.moveTo(wrist.x * canvasWidth, wrist.y * canvasHeight);
+    
+    // Draw smooth outline connecting key points
+    const outlinePoints = [
+        landmarks[1],   // Thumb base
+        landmarks[4],   // Thumb tip
+        landmarks[3],   // Thumb joint
+        landmarks[5],   // Index base
+        landmarks[8],   // Index tip
+        landmarks[12],  // Middle tip
+        landmarks[16],  // Ring tip
+        landmarks[20],  // Pinky tip
+        landmarks[17],  // Pinky base
+        landmarks[0]    // Back to wrist
+    ];
+    
+    // Use quadratic curves for smooth outline
+    for (let i = 0; i < outlinePoints.length - 1; i++) {
+        const current = outlinePoints[i];
+        const next = outlinePoints[i + 1];
+        const midX = (current.x + next.x) / 2 * canvasWidth;
+        const midY = (current.y + next.y) / 2 * canvasHeight;
+        
+        canvasCtx.quadraticCurveTo(
+            current.x * canvasWidth, 
+            current.y * canvasHeight,
+            midX, 
+            midY
+        );
     }
     
-    // Draw subtle glow
-    canvasCtx.save();
+    canvasCtx.closePath();
+    
+    // Draw subtle glow effect
+    canvasCtx.shadowColor = handColor;
+    canvasCtx.shadowBlur = 15;
     canvasCtx.globalAlpha = 0.3;
-    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-        color: color,
-        lineWidth: 4
-    });
-    canvasCtx.restore();
+    canvasCtx.fillStyle = glowColor;
+    canvasCtx.fill();
     
-    // Draw main connections with thin lines
-    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-        color: color,
-        lineWidth: 1.5
-    });
+    // Draw clean outline
+    canvasCtx.shadowBlur = 0;
+    canvasCtx.globalAlpha = 0.8;
+    canvasCtx.strokeStyle = handColor;
+    canvasCtx.lineWidth = 2;
+    canvasCtx.stroke();
+    
+    canvasCtx.restore();
 }
 
-// Draw modern landmarks with minimal style
-function drawModernLandmarks(landmarks, color, glowColor) {
-    if (typeof drawLandmarks === 'undefined') return;
-    
+// Draw minimal gesture indicator
+function drawGestureIndicator(landmarks, isUserLeftHand, handColor) {
     const rect = canvas.getBoundingClientRect();
     const canvasWidth = rect.width;
     const canvasHeight = rect.height;
     
-    canvasCtx.save();
+    // Get palm center for positioning
+    const palmCenter = landmarks[9]; // Middle finger base
+    const x = palmCenter.x * canvasWidth;
+    const y = palmCenter.y * canvasHeight;
     
-    landmarks.forEach((landmark, index) => {
-        const x = Math.round(landmark.x * canvasWidth);
-        const y = Math.round(landmark.y * canvasHeight);
-        
-        // Minimal sizes
-        let radius = 2;
-        if ([4, 8, 12, 16, 20].includes(index)) {
-            radius = 3; // Fingertips slightly larger
-        }
-        
-        // Draw subtle glow only for fingertips
-        if ([4, 8, 12, 16, 20].includes(index)) {
-            canvasCtx.beginPath();
-            canvasCtx.arc(x, y, radius + 4, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = glowColor;
-            canvasCtx.fill();
-        }
-        
-        // Draw main landmark
-        canvasCtx.beginPath();
-        canvasCtx.arc(x, y, radius, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = color;
-        canvasCtx.fill();
-    });
+    // Get current gesture mode
+    const hand = handState[isUserLeftHand ? 'leftHand' : 'rightHand'];
+    const deckLabel = isUserLeftHand ? 'A' : 'B';
     
-    canvasCtx.restore();
-}
-
-// Draw modern fingertip indicators
-function drawModernFingertips(landmarks, accentColor) {
-    const fingertips = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky
-    const rect = canvas.getBoundingClientRect();
-    const canvasWidth = rect.width;
-    const canvasHeight = rect.height;
-    
-    canvasCtx.save();
-    canvasCtx.globalAlpha = 0.5;
-    
-    fingertips.forEach(index => {
-        const landmark = landmarks[index];
-        const x = Math.round(landmark.x * canvasWidth);
-        const y = Math.round(landmark.y * canvasHeight);
-        
-        // Draw subtle circle only
-        canvasCtx.beginPath();
-        canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-        canvasCtx.strokeStyle = accentColor;
-        canvasCtx.lineWidth = 1;
-        canvasCtx.stroke();
-    });
-    
-    canvasCtx.restore();
-}
-
-// Draw modern hand label
-function drawModernHandLabel(landmarks, isUserLeftHand, handColor) {
-    if (!landmarks || landmarks.length === 0) return;
-
-    try {
-        const rect = canvas.getBoundingClientRect();
-        const canvasWidth = rect.width;
-        const canvasHeight = rect.height;
-
-        // Get wrist position
-        const wrist = landmarks[0];
-        const wristX = Math.round(wrist.x * canvasWidth);
-        const wristY = Math.round(wrist.y * canvasHeight);
-
-        // Deck label
-        const deckLabel = isUserLeftHand ? 'DECK A' : 'DECK B';
-        
+    if (hand && hand.gestures && hand.gestures.mode) {
         canvasCtx.save();
-        canvasCtx.scale(-1, 1);
-        const flippedX = -wristX;
+        canvasCtx.scale(-1, 1); // Flip for camera
+        const flippedX = -x;
         
-        // Modern minimal text style
-        canvasCtx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        // Draw clean mode indicator
+        canvasCtx.font = '600 14px -apple-system, BlinkMacSystemFont, sans-serif';
         canvasCtx.textAlign = 'center';
         canvasCtx.textBaseline = 'middle';
-        canvasCtx.letterSpacing = '2px';
         
-        // Subtle shadow
-        canvasCtx.shadowColor = handColor;
-        canvasCtx.shadowBlur = 8;
+        // Background
+        const text = `${deckLabel}:${hand.gestures.mode.toUpperCase()}`;
+        const textWidth = canvasCtx.measureText(text).width;
+        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        canvasCtx.roundRect(flippedX - textWidth/2 - 10, y - 12, textWidth + 20, 24, 12);
+        canvasCtx.fill();
+        
+        // Text
         canvasCtx.fillStyle = handColor;
-        canvasCtx.fillText(deckLabel, flippedX, wristY + 25);
+        canvasCtx.fillText(text, flippedX, y);
         
         canvasCtx.restore();
-        
-        // Draw mode indicator if active
-        const hand = handState[isUserLeftHand ? 'leftHand' : 'rightHand'];
-        if (hand && hand.gestures && hand.gestures.mode && hand.gestures.mode !== 'all') {
-            const modeText = hand.gestures.mode.toUpperCase();
-            
-            canvasCtx.save();
-            canvasCtx.scale(-1, 1);
-            
-            // Mode indicator with modern style
-            canvasCtx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            canvasCtx.textAlign = 'center';
-            canvasCtx.textBaseline = 'middle';
-            
-            // Background pill
-            const textWidth = canvasCtx.measureText(modeText).width;
-            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            canvasCtx.roundRect(flippedX - textWidth/2 - 8, wristY + 38, textWidth + 16, 20, 10);
-            canvasCtx.fill();
-            
-            // Text
-            canvasCtx.fillStyle = '#00ff88';
-            canvasCtx.fillText(modeText, flippedX, wristY + 48);
-            
-            canvasCtx.restore();
-        }
-        
-    } catch (error) {
-        console.error('❌ Modern hand label drawing error:', error);
     }
 }
 
@@ -995,11 +1163,17 @@ async function startHandTracking() {
         // Update state
         appState.isTracking = true;
         
-        // Start the frame processing loop
+        // Start the optimized frame processing loop
         let processing = false;
+        let frameSkipCounter = 0;
+        const FRAME_SKIP = 2; // Process every 3rd frame for smoother performance
+        
         const processFrame = async () => {
             if (appState.isTracking && video.readyState === 4 && hands) {
-                if (!processing) {
+                // Skip frames to reduce processing load
+                frameSkipCounter++;
+                if (frameSkipCounter >= FRAME_SKIP && !processing) {
+                    frameSkipCounter = 0;
                     processing = true;
                     try {
                         await hands.send({image: video});
