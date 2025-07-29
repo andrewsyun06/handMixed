@@ -321,11 +321,19 @@ function processEnhancedHandControl(handSide, landmarks) {
     updateGestureDisplay(deckLetter, hand.gestures);
 }
 
-// Process hand volume control - UPDATED
+// Process hand volume control - Only works in "four fingers" mode
 function processHandVolumeControl(handSide, volume) {
     const deckLetter = handSide === 'leftHand' ? 'A' : 'B';
     const deck = deckState[deckLetter];
     const hand = handState[handSide];
+    
+    // Only apply volume control if in "volume" mode (4 fingers)
+    const currentMode = hand.gestures ? hand.gestures.mode : 'volume';
+    
+    if (currentMode !== 'volume') {
+        // Not in volume control mode, skip volume adjustment
+        return;
+    }
     
     // Update deck volume based on hand position
     deck.handVolume = volume;
@@ -333,17 +341,21 @@ function processHandVolumeControl(handSide, volume) {
     
     // Apply volume to audio if track is loaded
     if ((deck.audio || deck.multiChannelPlayer) && deck.track) {
-        // Volume affects only the channels in the current mode
-        const mode = hand.gestures ? hand.gestures.mode : 'all';
-        updateDeckVolumeWithMode(deckLetter, volume, mode);
+        updateDeckVolumeWithMode(deckLetter, volume, 'volume');
     }
     
     // Update visual indicator
-    updateDeckVolumeIndicator(deckLetter, volume * 100);
+    if (window.updateDeckVolumeIndicator) {
+        updateDeckVolumeIndicator(deckLetter, volume * 100);
+    } else {
+        // Fallback: update the volume slider in the UI
+        const volumeSlider = document.getElementById(`volumeSlider${deckLetter}`);
+        const volumeLabel = document.getElementById(`volumeLabel${deckLetter}`);
+        if (volumeSlider) volumeSlider.value = Math.round(volume * 100);
+        if (volumeLabel) volumeLabel.textContent = Math.round(volume * 100);
+    }
     
-    // Show mode in console
-    const mode = hand.gestures ? hand.gestures.mode : 'all';
-    console.log(`🔊 Deck ${deckLetter} hand volume: ${Math.round(volume * 100)}% (Mode: ${mode})`);
+    console.log(`🔊 Deck ${deckLetter} volume control: ${Math.round(volume * 100)}% (4 fingers mode)`);
 }
 
 // Enhanced finger gesture detection with improved accuracy
@@ -372,28 +384,33 @@ function detectAndProcessFingerGestures(handSide, landmarks) {
             hand.gestures.lastFingerCount = fingerCount;
             hand.lastGestureTime = currentTime;
             
-            // Update mode based on finger count
-            let newMode = 'all';
+            // Always trigger the action when finger count changes
+            triggerFingerCountAction(fingerCount, handSide, deckLetter);
+            
+            // Update gesture mode based on finger count
+            let newMode = 'volume'; // Default to volume control
             switch (fingerCount) {
-                case 1:
-                    newMode = 'main';
+                case 0:
+                    newMode = 'fist';
                     break;
-                case 2:
+                case 1:
                     newMode = 'bass';
                     break;
-                case 3:
+                case 2:
                     newMode = 'drums';
                     break;
+                case 3:
+                    newMode = 'synth';
+                    break;
                 case 4:
+                    newMode = 'volume';
+                    break;
                 case 5:
                     newMode = 'all';
                     break;
             }
             
-            if (newMode !== hand.gestures.mode) {
-                hand.gestures.mode = newMode;
-                triggerFingerCountAction(fingerCount, handSide, deckLetter, newMode);
-            }
+            hand.gestures.mode = newMode;
         }
     }
 }
@@ -420,67 +437,104 @@ function detectFingerCount(landmarks) {
     return count;
 }
 
-// Trigger finger count action with enhanced feedback
-function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
-    console.log(`🖐️ Finger count detected: ${fingerCount} on ${handSide} (Deck ${deckLetter}) - Mode: ${mode}`);
+// Trigger finger count action with new control scheme
+function triggerFingerCountAction(fingerCount, handSide, deckLetter) {
+    console.log(`🖐️ Finger count detected: ${fingerCount} on ${handSide} (Deck ${deckLetter})`);
     
     const deck = deckState[deckLetter];
+    const hand = handState[handSide];
     
-    // Update deck's active mode
-    if (!deck.activeMode) {
-        deck.activeMode = 'all';
+    // Initialize audio channels if not exists
+    if (!deck.audioChannels) {
+        deck.audioChannels = {
+            bass: { enabled: true, volume: 1.0, solo: false, mute: false },
+            drums: { enabled: true, volume: 1.0, solo: false, mute: false },
+            synth: { enabled: true, volume: 1.0, solo: false, mute: false }
+        };
     }
-    deck.activeMode = mode;
     
-    // Update channel states based on mode
-    switch (mode) {
-        case 'main':
-            // Only main/synth channel active
-            if (deck.audioChannels) {
-                deck.audioChannels.bass.enabled = false;
-                deck.audioChannels.drums.enabled = false;
-                deck.audioChannels.synth.enabled = true;
-            }
+    // Handle gestures based on finger count
+    switch (fingerCount) {
+        case 0:
+            // Fist = Toggle all channels OFF/ON
+            const allCurrentlyEnabled = deck.audioChannels.bass.enabled && 
+                                       deck.audioChannels.drums.enabled && 
+                                       deck.audioChannels.synth.enabled;
+            
+            // If all are currently on, turn them all off. If any are off, turn them all on.
+            const newState = !allCurrentlyEnabled;
+            
+            console.log(`👊 Fist detected - Toggling all channels ${newState ? 'ON' : 'OFF'} for Deck ${deckLetter}`);
+            deck.audioChannels.bass.enabled = newState;
+            deck.audioChannels.drums.enabled = newState;
+            deck.audioChannels.synth.enabled = newState;
+            hand.gestureMode = 'fist';
+            
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: Main track only (1 finger)`, 'info');
+                updateStatus(`Deck ${deckLetter}: All channels ${newState ? 'ON' : 'OFF'} (Fist) 👊`, 'info');
             }
+            showFingerCountFeedback(deckLetter, fingerCount, `All ${newState ? 'ON' : 'OFF'}`, '👊');
             break;
             
-        case 'bass':
-            // Only bass channel active
-            if (deck.audioChannels) {
-                deck.audioChannels.bass.enabled = true;
-                deck.audioChannels.drums.enabled = false;
-                deck.audioChannels.synth.enabled = false;
-            }
+        case 1:
+            // Pointer finger = BASS toggle
+            console.log(`☝️ Pointer finger - BASS toggle for Deck ${deckLetter}`);
+            deck.audioChannels.bass.enabled = !deck.audioChannels.bass.enabled;
+            hand.gestureMode = 'bass';
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: Bass only (2 fingers)`, 'info');
+                updateStatus(`Deck ${deckLetter}: BASS ${deck.audioChannels.bass.enabled ? 'ON' : 'OFF'} ☝️`, 'info');
             }
+            showFingerCountFeedback(deckLetter, fingerCount, `BASS ${deck.audioChannels.bass.enabled ? 'ON' : 'OFF'}`, '☝️');
             break;
             
-        case 'drums':
-            // Only drums channel active
-            if (deck.audioChannels) {
-                deck.audioChannels.bass.enabled = false;
-                deck.audioChannels.drums.enabled = true;
-                deck.audioChannels.synth.enabled = false;
-            }
+        case 2:
+            // Two fingers (peace sign) = DRUMS toggle
+            console.log(`✌️ Two fingers - DRUMS toggle for Deck ${deckLetter}`);
+            deck.audioChannels.drums.enabled = !deck.audioChannels.drums.enabled;
+            hand.gestureMode = 'drums';
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: Drums only (3 fingers)`, 'info');
+                updateStatus(`Deck ${deckLetter}: DRUMS ${deck.audioChannels.drums.enabled ? 'ON' : 'OFF'} ✌️`, 'info');
             }
+            showFingerCountFeedback(deckLetter, fingerCount, `DRUMS ${deck.audioChannels.drums.enabled ? 'ON' : 'OFF'}`, '✌️');
             break;
             
-        case 'all':
-            // All channels active
-            if (deck.audioChannels) {
-                deck.audioChannels.bass.enabled = true;
-                deck.audioChannels.drums.enabled = true;
-                deck.audioChannels.synth.enabled = true;
-            }
+        case 3:
+            // Three fingers = SYNTH toggle
+            console.log(`🤟 Three fingers - SYNTH toggle for Deck ${deckLetter}`);
+            deck.audioChannels.synth.enabled = !deck.audioChannels.synth.enabled;
+            hand.gestureMode = 'synth';
             if (typeof updateStatus === 'function') {
-                updateStatus(`Deck ${deckLetter}: All channels (open hand)`, 'info');
+                updateStatus(`Deck ${deckLetter}: SYNTH ${deck.audioChannels.synth.enabled ? 'ON' : 'OFF'} 🤟`, 'info');
             }
+            showFingerCountFeedback(deckLetter, fingerCount, `SYNTH ${deck.audioChannels.synth.enabled ? 'ON' : 'OFF'}`, '🤟');
             break;
+            
+        case 4:
+            // Four fingers = Volume control mode
+            console.log(`🖖 Four fingers - VOLUME control mode for Deck ${deckLetter}`);
+            hand.gestureMode = 'volume';
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: Volume control mode 🖖`, 'info');
+            }
+            showFingerCountFeedback(deckLetter, fingerCount, 'Volume Control', '🖖');
+            break;
+            
+        case 5:
+            // High five = All channels ON
+            console.log(`🖐️ High five - All channels ON for Deck ${deckLetter}`);
+            deck.audioChannels.bass.enabled = true;
+            deck.audioChannels.drums.enabled = true;
+            deck.audioChannels.synth.enabled = true;
+            hand.gestureMode = 'all';
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Deck ${deckLetter}: All channels ON (High Five) 🖐️`, 'info');
+            }
+            showFingerCountFeedback(deckLetter, fingerCount, 'All ON', '🖐️');
+            break;
+            
+        default:
+            console.log(`❓ Unknown gesture with ${fingerCount} fingers`);
+            return;
     }
     
     // Update audio channel settings
@@ -493,11 +547,8 @@ function triggerFingerCountAction(fingerCount, handSide, deckLetter, mode) {
     
     // Update UI channel highlighting
     if (window.updateChannelHighlighting) {
-        updateChannelHighlighting(deckLetter, mode);
+        updateChannelHighlighting(deckLetter, hand.gestureMode);
     }
-    
-    // Visual feedback
-    showFingerCountFeedback(deckLetter, fingerCount, mode);
 }
 
 // PLACEHOLDER FUNCTIONS - These will be called when gestures are detected
@@ -534,48 +585,44 @@ function onThumbPinkyGesture(handSide, deckLetter) {
 }
 
 // Show visual feedback for finger count
-function showFingerCountFeedback(deckLetter, fingerCount, mode) {
-    const overlay = document.getElementById(`deck${deckLetter}Overlay`);
-    if (!overlay) return;
+function showFingerCountFeedback(deckLetter, fingerCount, text, emoji) {
+    // Try different overlay selectors
+    let overlay = document.getElementById(`deck${deckLetter}Overlay`);
+    if (!overlay) {
+        overlay = document.querySelector(`.deck-overlay-panel.${deckLetter === 'A' ? 'left' : 'right'}`);
+    }
+    if (!overlay) {
+        overlay = document.querySelector('.deck-overlay-panel');
+    }
+    if (!overlay) {
+        console.warn(`No overlay found for deck ${deckLetter} feedback`);
+        return;
+    }
     
     // Create temporary feedback element
     const feedback = document.createElement('div');
     feedback.className = 'gesture-feedback';
     
-    let emoji = '✋';
-    let text = '';
-    switch (fingerCount) {
-        case 1:
-            emoji = '☝️';
-            text = 'MAIN';
-            break;
-        case 2:
-            emoji = '✌️';
-            text = 'BASS';
-            break;
-        case 3:
-            emoji = '🤟';
-            text = 'DRUMS';
-            break;
-        case 4:
-        case 5:
-            emoji = '🖐️';
-            text = 'ALL';
-            break;
-    }
+    // Set color based on deck
+    const deckColor = deckLetter === 'A' ? '#00d4ff' : '#ff8a00';
     
-    feedback.innerHTML = `<span style="font-size: 2rem;">${emoji}</span><br><span style="font-size: 1rem; font-weight: bold;">${text}</span>`;
+    feedback.innerHTML = `<span style="font-size: 2.5rem;">${emoji}</span><br><span style="font-size: 1.1rem; font-weight: bold;">${text}</span>`;
     feedback.style.cssText = `
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
-        color: #00d4ff;
-        z-index: 1000;
-        animation: gestureFlash 0.8s ease-out;
+        color: ${deckColor};
+        z-index: 2000;
+        animation: gestureFlash 1.2s ease-out;
         pointer-events: none;
-        text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+        text-shadow: 0 0 20px ${deckColor}80;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 15px 20px;
+        border-radius: 15px;
+        border: 2px solid ${deckColor};
+        box-shadow: 0 0 30px ${deckColor}60;
     `;
     
     // Add CSS animation if not exists
@@ -588,11 +635,11 @@ function showFingerCountFeedback(deckLetter, fingerCount, mode) {
                     opacity: 0; 
                     transform: translate(-50%, -50%) scale(0.5); 
                 }
-                20% { 
+                15% { 
                     opacity: 1; 
-                    transform: translate(-50%, -50%) scale(1.2); 
+                    transform: translate(-50%, -50%) scale(1.15); 
                 }
-                80% { 
+                85% { 
                     opacity: 1; 
                     transform: translate(-50%, -50%) scale(1); 
                 }
@@ -612,7 +659,7 @@ function showFingerCountFeedback(deckLetter, fingerCount, mode) {
         if (feedback.parentNode) {
             feedback.remove();
         }
-    }, 800);
+    }, 1200);
 }
 
 // Get emoji for gesture
@@ -885,7 +932,7 @@ function updateHandIndicator(statusElement, handState) {
     }
 }
 
-// Enhanced start hand tracking
+// Enhanced start hand tracking - works with existing camera
 async function startHandTracking() {
     if (appState.isTracking) {
         console.log('⚠️ Enhanced hand tracking already active');
@@ -898,60 +945,80 @@ async function startHandTracking() {
         }
         console.log('🚀 Starting enhanced hand tracking...');
         
-        // Check HTTPS requirement
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-            throw new Error('Camera access requires HTTPS or localhost');
+        // Get video and canvas elements
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        
+        if (!video || !canvas) {
+            throw new Error('Video or canvas element not found');
         }
         
-        // Initialize MediaPipe if not already done
-        if (!hands) {
-            const success = await initializeMediaPipe();
-            if (!success) {
-                throw new Error('Enhanced MediaPipe initialization failed');
-            }
+        console.log('📹 Using existing video stream');
+        console.log('Video element:', video);
+        console.log('Canvas element:', canvas);
+        
+        // Set up canvas context
+        canvasCtx = canvas.getContext('2d');
+        if (!canvasCtx) {
+            throw new Error('Unable to get canvas 2D context');
         }
 
-        // Check camera permissions
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(track => track.stop());
-        
-        console.log('📷 Camera permissions granted');
-
-        // Set up canvas
+        // Set up high DPI canvas for crisp rendering
         setupHighDPICanvas();
 
-        // Start camera
-        console.log('📹 Starting enhanced camera...');
-        await camera.start();
+        // Initialize MediaPipe Hands
+        console.log('🖐️ Initializing MediaPipe Hands...');
+        hands = new Hands({
+            locateFile: (file) => {
+                const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                console.log(`📁 Loading MediaPipe file: ${url}`);
+                return url;
+            }
+        });
+
+        // Configure hands detection
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.8,
+            minTrackingConfidence: 0.7
+        });
+
+        console.log('⚙️ Enhanced MediaPipe Hands configured');
+
+        // Set up results callback
+        hands.onResults(onEnhancedHandResults);
+
+        // Start processing frames from existing video
+        console.log('🎬 Starting frame processing...');
         
         // Update state
         appState.isTracking = true;
         
-        // Update UI - Support both old and new layouts
-        const video = document.getElementById('video');
-        const videoPlaceholder = document.getElementById('videoPlaceholder') || document.getElementById('cameraPlaceholder');
-        const startBtn = document.getElementById('startBtn') || document.getElementById('startCameraBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const videoContainer = document.getElementById('videoContainer');
-        
-        if (video) video.style.display = 'block';
-        if (videoPlaceholder) videoPlaceholder.style.display = 'none';
-        if (startBtn) {
-            if (startBtn.id === 'startCameraBtn') {
-                startBtn.textContent = 'Stop Camera';
-            } else {
-                startBtn.style.display = 'none';
+        // Start the frame processing loop
+        let processing = false;
+        const processFrame = async () => {
+            if (appState.isTracking && video.readyState === 4 && hands) {
+                if (!processing) {
+                    processing = true;
+                    try {
+                        await hands.send({image: video});
+                    } catch (frameError) {
+                        console.warn('⚠️ Frame processing error:', frameError);
+                    }
+                    processing = false;
+                }
             }
-        }
-        if (stopBtn) stopBtn.style.display = 'block';
-        if (videoContainer) videoContainer.classList.add('hand-tracking');
+            if (appState.isTracking) {
+                requestAnimationFrame(processFrame);
+            }
+        };
+        
+        processFrame();
         
         console.log('✅ Enhanced hand tracking started successfully');
         if (typeof updateStatus === 'function') {
             updateStatus('Enhanced hand tracking active - Use gestures to control multi-channel audio!', 'success');
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('Hand tracking active - Show palms to play!', 'success');
         }
         
     } catch (error) {
@@ -959,37 +1026,12 @@ async function startHandTracking() {
         
         let errorMessage = 'Failed to start enhanced hand tracking: ' + error.message;
         
-        if (error.name === 'NotAllowedError') {
-            errorMessage = 'Camera access denied. Please allow camera permissions.';
-        } else if (error.name === 'NotFoundError') {
-            errorMessage = 'No camera found. Please connect a camera.';
-        } else if (error.name === 'NotSupportedError') {
-            errorMessage = 'Camera not supported in this browser.';
-        }
-        
         if (typeof updateStatus === 'function') {
             updateStatus(errorMessage, 'error');
         }
-        if (typeof showNotification === 'function') {
-            showNotification(errorMessage, 'error');
-        }
         
-        // Reset UI on error
-        const video = document.getElementById('video');
-        const videoPlaceholder = document.getElementById('videoPlaceholder') || document.getElementById('cameraPlaceholder');
-        const startBtn = document.getElementById('startBtn') || document.getElementById('startCameraBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        
-        if (video) video.style.display = 'none';
-        if (videoPlaceholder) videoPlaceholder.style.display = 'flex';
-        if (startBtn) {
-            if (startBtn.id === 'startCameraBtn') {
-                startBtn.textContent = 'Start Camera';
-            } else {
-                startBtn.style.display = 'block';
-            }
-        }
-        if (stopBtn) stopBtn.style.display = 'none';
+        // Reset state on error
+        appState.isTracking = false;
     }
 }
 
@@ -1158,7 +1200,111 @@ window.addEventListener('load', () => {
     setTimeout(checkMediaPipeDependencies, 1000);
 });
 
+// Export enhanced functions to global scope
+window.startHandTracking = startHandTracking;
+window.stopHandTracking = stopHandTracking;
+window.initializeHandTracking = initializeHandTracking;
+window.stopMediaPipeHands = stopMediaPipeHands;
+window.initializeMediaPipe = initializeMediaPipe;
+
+// Export individual functions for debugging
+window.toggleAudioChannel = toggleAudioChannel;
+window.toggleAllAudioChannels = toggleAllAudioChannels;
+window.updateAudioChannelSettings = updateAudioChannelSettings;
+window.updateChannelIndicators = updateChannelIndicators;
+
+// Helper function to update deck volume indicators
+function updateDeckVolumeIndicator(deckLetter, volumePercent) {
+    const volumeSlider = document.getElementById(`volumeSlider${deckLetter}`);
+    const volumeLabel = document.getElementById(`volumeLabel${deckLetter}`);
+    
+    if (volumeSlider) {
+        volumeSlider.value = volumePercent;
+    }
+    if (volumeLabel) {
+        volumeLabel.textContent = Math.round(volumePercent);
+    }
+    
+    console.log(`📊 Volume indicator updated: Deck ${deckLetter} = ${Math.round(volumePercent)}%`);
+}
+
+// Helper function to update channel highlighting
+function updateChannelHighlighting(deckLetter, mode) {
+    const deckPanel = document.querySelector(`.deck-overlay-panel.${deckLetter === 'A' ? 'left' : 'right'}`);
+    if (!deckPanel) return;
+    
+    const channelButtons = deckPanel.querySelectorAll('.channel-btn');
+    
+    channelButtons.forEach(btn => {
+        const channel = btn.getAttribute('data-channel');
+        if (channel) {
+            // Remove all mode classes
+            btn.classList.remove('mode-active', 'mode-inactive', 'mode-volume', 'mode-fist');
+            
+            // Add appropriate class based on mode
+            switch (mode) {
+                case 'volume':
+                    btn.classList.add('mode-volume');
+                    break;
+                case 'fist':
+                    btn.classList.add('mode-fist');
+                    break;
+                case 'all':
+                    btn.classList.add('mode-active');
+                    break;
+                case 'bass':
+                case 'drums':
+                case 'synth':
+                    if (mode === channel) {
+                        btn.classList.add('mode-active');
+                    } else {
+                        btn.classList.add('mode-inactive');
+                    }
+                    break;
+                default:
+                    btn.classList.add('mode-inactive');
+            }
+        }
+    });
+    
+    console.log(`🎨 Channel highlighting updated: Deck ${deckLetter} mode ${mode}`);
+}
+
+// Simple debug function to test MediaPipe availability
+function debugMediaPipeStatus() {
+    console.log('=== MEDIAPIPE DEBUG STATUS ===');
+    console.log('Hands class available:', typeof Hands !== 'undefined');
+    console.log('Camera class available:', typeof Camera !== 'undefined');  
+    console.log('drawConnectors available:', typeof drawConnectors !== 'undefined');
+    console.log('drawLandmarks available:', typeof drawLandmarks !== 'undefined');
+    console.log('HAND_CONNECTIONS available:', typeof HAND_CONNECTIONS !== 'undefined');
+    console.log('Video element:', document.getElementById('video'));
+    console.log('Canvas element:', document.getElementById('canvas'));
+    console.log('App state tracking:', appState?.isTracking);
+    console.log('Hands instance:', !!hands);
+    console.log('================================');
+}
+
+// Export enhanced functions to global scope
+window.startHandTracking = startHandTracking;
+window.stopHandTracking = stopHandTracking;
+window.initializeHandTracking = initializeHandTracking;
+window.stopMediaPipeHands = stopMediaPipeHands;
+window.initializeMediaPipe = initializeMediaPipe;
+window.debugMediaPipeStatus = debugMediaPipeStatus;
+
+// Note: toggleAudioChannel and related functions are exported from hand-gestures.js
+
+// Export the helper functions
+window.updateDeckVolumeIndicator = updateDeckVolumeIndicator;
+window.updateChannelHighlighting = updateChannelHighlighting;
+
 console.log('✅ Enhanced Multi-Channel Hand Tracking System Ready');
 console.log('🖐️ Advanced finger gesture detection enabled');
 console.log('🎚️ Multi-channel audio control ready');
 console.log('🌟 Enhanced visual feedback system loaded');
+console.log('🌐 Functions exported to global scope:');
+console.log('  - window.startHandTracking()');
+console.log('  - window.stopHandTracking()');
+console.log('  - window.toggleAudioChannel()');
+console.log('  - window.toggleAllAudioChannels()');

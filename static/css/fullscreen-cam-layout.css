@@ -62,6 +62,81 @@ body {
     background: linear-gradient(135deg, #00f5ff, #ffa500);
 }
 
+/* Hand Tracking Visual Feedback */
+.deck-overlay-panel.hand-active {
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.6) !important;
+    border-color: #00d4ff !important;
+}
+
+.deck-overlay-panel.right.hand-active {
+    box-shadow: 0 0 30px rgba(255, 138, 0, 0.6) !important;
+    border-color: #ff8a00 !important;
+}
+
+/* Channel Control Visual Feedback */
+.channel-btn.mode-active {
+    background: rgba(30, 215, 96, 0.3) !important;
+    border-color: #1ed760 !important;
+    box-shadow: 0 0 15px rgba(30, 215, 96, 0.4) !important;
+}
+
+.channel-btn.mode-inactive {
+    background: rgba(255, 107, 107, 0.2) !important;
+    border-color: #ff6b6b !important;
+    opacity: 0.5 !important;
+}
+
+.channel-btn.mode-volume {
+    background: rgba(0, 212, 255, 0.3) !important;
+    border-color: #00d4ff !important;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.4) !important;
+    animation: volumeMode 1.5s ease-in-out infinite alternate;
+}
+
+.channel-btn.mode-fist {
+    background: rgba(255, 0, 0, 0.3) !important;
+    border-color: #ff0000 !important;
+    opacity: 0.3 !important;
+    filter: grayscale(100%);
+}
+
+@keyframes volumeMode {
+    0% {
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 25px rgba(0, 212, 255, 0.8);
+    }
+}
+
+.channel-btn .channel-led.active {
+    background: #1ed760 !important;
+    box-shadow: 0 0 10px rgba(30, 215, 96, 0.8) !important;
+}
+
+.channel-btn .channel-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #333;
+    margin-right: 8px;
+    transition: all 0.3s ease;
+}
+
+/* Pulsing animation for active channels */
+.channel-status.pulsing {
+    animation: channelPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes channelPulse {
+    0% {
+        box-shadow: 0 0 5px rgba(30, 215, 96, 0.5);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(30, 215, 96, 1);
+    }
+}
+
 #video, #canvas {
     position: absolute;
     top: 0;

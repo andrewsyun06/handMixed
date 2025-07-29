@@ -750,18 +750,33 @@
                         
                         console.log('Camera started successfully');
                         
-                        // Initialize MediaPipe Hands after a short delay
+                        // Initialize Enhanced Hand Tracking System after a short delay
                         setTimeout(() => {
                             console.log('🔍 Checking MediaPipe availability...');
                             console.log('Hands available:', typeof Hands !== 'undefined');
                             console.log('Camera available:', typeof Camera !== 'undefined');
                             console.log('drawConnectors available:', typeof drawConnectors !== 'undefined');
                             
-                            if (window.initializeMediaPipeHands) {
-                                console.log('📸 Calling initializeMediaPipeHands...');
+                            // Debug MediaPipe status first
+                            if (window.debugMediaPipeStatus) {
+                                window.debugMediaPipeStatus();
+                            }
+                            
+                            // Use the enhanced hand tracking system from hand-tracking.js
+                            if (window.startHandTracking) {
+                                console.log('🖐️ Starting Enhanced Hand Tracking System...');
+                                window.startHandTracking().catch(error => {
+                                    console.error('❌ startHandTracking failed:', error);
+                                });
+                            } else if (window.initializeHandTracking) {
+                                console.log('🖐️ Using initializeHandTracking...');
+                                window.initializeHandTracking();
+                            } else if (window.initializeMediaPipeHands) {
+                                console.log('📸 Fallback to initializeMediaPipeHands...');
                                 window.initializeMediaPipeHands();
                             } else {
-                                console.error('❌ MediaPipe initialization function not found!');
+                                console.error('❌ No hand tracking initialization function found!');
+                                console.log('Available window functions:', Object.keys(window).filter(k => k.includes('Hand') || k.includes('hand')));
                             }
                         }, 500); // Wait for libraries to load
                         

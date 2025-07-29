@@ -120,7 +120,9 @@ function updateChannelIndicators(deckLetter) {
     });
     
     // Update waveform visibility based on channel states
-    updateChannelWaveformVisibility(deckLetter);
+    if (window.updateChannelWaveformVisibility) {
+        updateChannelWaveformVisibility(deckLetter);
+    }
     
     console.log(`🎚️ Channel indicators updated for Deck ${deckLetter}`);
 }
@@ -318,14 +320,16 @@ function updateDeckVolumeWithMode(deckLetter, handVolume, mode) {
         Object.keys(deck.audioChannels).forEach(channelType => {
             const channel = deck.audioChannels[channelType];
             
-            // Apply hand volume only to channels that are active in the current mode
+            // Apply hand volume based on the current mode
             let channelVolume = 0;
             
-            if (mode === 'all' && channel.enabled) {
+            if (mode === 'volume') {
+                // In volume control mode (4 fingers), control all enabled channels
+                if (channel.enabled) {
+                    channelVolume = channel.volume * baseVolume * handVolume;
+                }
+            } else if (mode === 'all' && channel.enabled) {
                 // In 'all' mode, hand controls all enabled channels
-                channelVolume = channel.volume * baseVolume * handVolume;
-            } else if (mode === 'main' && channelType === 'synth' && channel.enabled) {
-                // In 'main' mode, hand only controls synth channel
                 channelVolume = channel.volume * baseVolume * handVolume;
             } else if (mode === 'bass' && channelType === 'bass' && channel.enabled) {
                 // In 'bass' mode, hand only controls bass channel
@@ -333,21 +337,28 @@ function updateDeckVolumeWithMode(deckLetter, handVolume, mode) {
             } else if (mode === 'drums' && channelType === 'drums' && channel.enabled) {
                 // In 'drums' mode, hand only controls drums channel
                 channelVolume = channel.volume * baseVolume * handVolume;
+            } else if (mode === 'synth' && channelType === 'synth' && channel.enabled) {
+                // In 'synth' mode, hand only controls synth channel
+                channelVolume = channel.volume * baseVolume * handVolume;
             } else if (channel.enabled) {
-                // Other channels maintain their current volume
-                channelVolume = channel.volume * baseVolume * deck.lastHandVolume;
+                // Other channels maintain their base volume without hand control
+                channelVolume = channel.volume * baseVolume;
             }
             
             deck.multiChannelPlayer.setChannelVolume(channelType, channelVolume);
         });
         
-        // Store last hand volume for channels not being controlled
+        // Store last hand volume for reference
         deck.lastHandVolume = handVolume;
     }
     
     // Apply to single audio element (fallback mode)
     if (deck.audio) {
-        deck.audio.volume = baseVolume * handVolume;
+        if (mode === 'volume') {
+            deck.audio.volume = baseVolume * handVolume;
+        } else {
+            deck.audio.volume = baseVolume; // No hand volume control in other modes
+        }
     }
     
     console.log(`🔊 Deck ${deckLetter} mode-based volume: ${Math.round(handVolume * 100)}% (Mode: ${mode})`);
@@ -511,6 +522,23 @@ function updateGestureDisplay(deckLetter, gestures) {
 // Initialize the multi-channel audio system
 initializeAudioChannels();
 
+// Export functions to global scope
+window.toggleAudioChannel = toggleAudioChannel;
+window.toggleAllAudioChannels = toggleAllAudioChannels;
+window.updateAudioChannelSettings = updateAudioChannelSettings;
+window.updateChannelIndicators = updateChannelIndicators;
+window.playBothDecks = playBothDecks;
+window.pauseBothDecks = pauseBothDecks;
+window.updateDeckVolume = updateDeckVolume;
+window.updateDeckVolumeWithMode = updateDeckVolumeWithMode;
+window.soloChannel = soloChannel;
+window.muteChannel = muteChannel;
+window.setChannelVolume = setChannelVolume;
+window.getChannelInfo = getChannelInfo;
+window.getAllChannelStates = getAllChannelStates;
+window.resetAllChannels = resetAllChannels;
+window.updateGlobalPlaybackState = updateGlobalPlaybackUI;
+
 console.log('🎛️ Multi-Channel Hand Gesture Control System Loaded!');
 console.log('🎚️ Features:');
 console.log('  - 👆 Thumb + Index: Bass/Kick channel control');
@@ -519,3 +547,4 @@ console.log('  - 💍 Thumb + Ring: Synth/Melody channel control');
 console.log('  - 🤙 Thumb + Pinky: All channels control');
 console.log('  - 🖐️ Hand height: Volume control');
 console.log('✅ Professional DJ multi-channel system ready!');
+console.log('🌐 Hand gesture functions exported to global scope');
